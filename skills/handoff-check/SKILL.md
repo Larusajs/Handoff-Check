@@ -13,7 +13,8 @@ Identify the manifest path, handoff path, and intended scope from the user's tas
 or repository configuration. Ask for a missing scope rather than guessing an
 environment. Resolve paths against the intended repository root.
 
-Run the installed CLI, or an explicitly configured local build:
+Run the installed CLI, the pinned npx command configured by init in the repository's
+agent instructions, or an explicitly configured local build:
 
 ```sh
 handoff-check verify --constraints constraints.json --handoff handoff.json --scope staging --format json
