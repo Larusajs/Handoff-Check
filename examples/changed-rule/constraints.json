@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "constraints": [
+    {
+      "id": "C-07",
+      "revision": 1,
+      "scope": "staging",
+      "description": "Require two reviewers before applying migrations",
+      "source": "decision:review"
+    }
+  ]
+}

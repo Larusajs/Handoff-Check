@@ -7,11 +7,16 @@ import configSchema from "../schemas/config.v1.schema.json" with {
 import manifestSchema from "../schemas/constraints.v1.schema.json" with {
   type: "json",
 };
+import manifestV2 from "../schemas/constraints.v2.schema.json" with {
+  type: "json",
+};
 import handoffSchema from "../schemas/handoff.v1.schema.json" with {
   type: "json",
 };
+import handoffV2 from "../schemas/handoff.v2.schema.json" with { type: "json" };
 import { parseConfig } from "../src/config.js";
 import { parseHandoff, parseManifest } from "../src/validation.js";
+import { snapshot } from "../src/verifier.js";
 
 const ajv = new Ajv2020();
 ajv.addFormat("date-time", fullFormats["date-time"]);
@@ -79,5 +84,31 @@ test("config schema and runtime agree on project options", () => {
   ]) {
     expect(configValid(value)).toBe(false);
     expect(() => parseConfig(value)).toThrow();
+  }
+});
+
+test("v2 schemas agree with revisioned rules and captured references", () => {
+  const checkManifest = ajv.compile(manifestV2);
+  const checkHandoff = ajv.compile(handoffV2);
+  const value = { schemaVersion: 2, constraints: [{ ...rule, revision: 1 }] };
+  expect(checkManifest(value)).toBe(true);
+  const captured = snapshot(
+    parseManifest(value),
+    "Resume",
+    "staging",
+    "2026-11-24T10:00:00Z",
+  );
+  expect(checkHandoff(captured)).toBe(true);
+  expect(() => parseHandoff(captured)).not.toThrow();
+  for (const revision of [null, 0, 1.5, 9007199254740992]) {
+    const invalidManifest = { ...value, constraints: [{ ...rule, revision }] };
+    const invalidHandoff = {
+      ...captured,
+      activeConstraints: [{ ...captured.activeConstraints[0], revision }],
+    };
+    expect(checkManifest(invalidManifest)).toBe(false);
+    expect(() => parseManifest(invalidManifest)).toThrow();
+    expect(checkHandoff(invalidHandoff)).toBe(false);
+    expect(() => parseHandoff(invalidHandoff)).toThrow();
   }
 });

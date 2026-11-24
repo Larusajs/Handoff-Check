@@ -23,7 +23,7 @@ Before resuming a handoff or continuing after a context reset, use the handoff-c
 skill and run the configured verifier from this repository root:
 
 \`\`\`sh
-npx --yes handoff-check@${metadata.version} verify --format json
+npx --yes handoff-check@${metadata.version} verify --format json --require-content
 \`\`\`
 
 Use .handoff-check.json for paths and scope. If no scope is configured, request the
@@ -32,6 +32,8 @@ Resolve exit 1 mismatches or exit 2 input errors before resuming the affected ta
 Do not change the manifest merely to obtain a pass. Empty rules verify no policy;
 author and review real project constraints before relying on this check. A pass
 checks declared IDs only and does not grant authorization or interpret summaries.
+Capture a snapshot only at handoff creation or after explicitly reviewing changes;
+never refresh the baseline before verifying it when resuming work.
 ${end}
 `;
 
@@ -112,15 +114,17 @@ export async function initialize(
     [
       "constraints",
       "constraints.json",
-      { schemaVersion: 1, constraints: [] },
+      { schemaVersion: 2, constraints: [] },
       parseManifest,
     ],
     [
       "handoff",
       "handoff.json",
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         task: "Describe the task being handed off",
+        scope,
+        capturedAt: new Date().toISOString(),
         activeConstraints: [],
       },
       parseHandoff,
@@ -189,7 +193,7 @@ export async function initialize(
   }
   if (options.ci) {
     const path = resolve(root, ".github/workflows/handoff-check.yml");
-    const content = `name: Handoff constraints\non: [push, pull_request]\npermissions:\n  contents: read\njobs:\n  verify:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n      - run: npx --yes handoff-check@${metadata.version} verify --format json\n`;
+    const content = `name: Handoff constraints\non: [push, pull_request]\npermissions:\n  contents: read\njobs:\n  verify:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n      - run: npx --yes handoff-check@${metadata.version} verify --format json --require-content\n`;
     const old = await inspect(root, path);
     if (old !== undefined && old !== content)
       throw new InputError(`Existing CI workflow differs: '${path}'`);
@@ -260,6 +264,6 @@ export async function initialize(
       ...(file.action === "preserve" ? {} : { content: file.content }),
     })),
     notice:
-      "Starter files may contain zero rules. Add reviewed project constraints and update the handoff before relying on verification.",
+      "Starter files may contain zero rules. Add reviewed project constraints, then capture a v2 snapshot. Existing v1 handoffs are preserved but cannot satisfy --require-content until explicitly migrated. Never refresh a baseline before verifying it on resume.",
   };
 }
