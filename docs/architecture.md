@@ -8,6 +8,11 @@ The CLI owns argument parsing, local file I/O, clock capture, rendering, and exi
 codes. Validation rejects malformed contracts before verification begins. The
 pure core receives validated objects, an explicit scope, and an explicit time.
 
+Explain uses the same lifecycle classifier as verification, without consuming a
+handoff. Optional v3 snapshots retain validated old content for field-level diffs;
+default snapshots remain v2. Pure renderers provide text and Markdown output.
+See decisions/0004-explainable-verification.md for contracts and compatibility.
+
 No verification operation writes inputs, accesses a network, calls a model,
 executes source references, or reads agent transcripts. Output order must be
 independent of manifest and handoff ordering.

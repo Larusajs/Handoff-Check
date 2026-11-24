@@ -1,11 +1,13 @@
-import { reference } from "./content.js";
+import { reference, retainedContent } from "./content.js";
 import type {
   Constraint,
   ContentHandoff,
+  Explanation,
+  FieldChange,
   Finding,
   Handoff,
   Manifest,
-  RuleFindingCode,
+  RetainedHandoff,
   VerificationResult,
 } from "./contracts.js";
 import { InputError, identifier, timestamp } from "./validation.js";
@@ -19,7 +21,7 @@ function inactive(
   rule: Constraint,
   scope: string,
   time: number,
-): RuleFindingCode | undefined {
+): "OUT_OF_SCOPE" | "REVOKED" | "SUPERSEDED" | "EXPIRED" | undefined {
   if (rule.scope !== "global" && rule.scope !== scope) return "OUT_OF_SCOPE";
   if (rule.revokedAt !== undefined && time >= Date.parse(rule.revokedAt))
     return "REVOKED";
@@ -39,7 +41,7 @@ export function verify(
   options: { requireActive?: boolean } = {},
 ): VerificationResult {
   identifier(scope, "scope");
-  if (handoff.schemaVersion === 2 && handoff.scope !== scope)
+  if (handoff.schemaVersion !== 1 && handoff.scope !== scope)
     throw new InputError(
       `Handoff scope '${handoff.scope}' does not match selected scope '${scope}'`,
     );
@@ -50,7 +52,7 @@ export function verify(
     .map((rule) => rule.id)
     .sort(compare);
   const refs = new Map(
-    handoff.schemaVersion === 2
+    handoff.schemaVersion !== 1
       ? handoff.activeConstraints.map((ref) => [ref.id, ref])
       : [],
   );
@@ -60,6 +62,11 @@ export function verify(
       : handoff.activeConstraints.map((ref) => ref.id)
   ).sort(compare);
   const reported = new Set(reportedConstraints);
+  const retained = new Map(
+    handoff.schemaVersion === 3
+      ? handoff.activeConstraints.map((ref) => [ref.id, ref.content])
+      : [],
+  );
   const findings: Finding[] = [];
   for (const id of expectedConstraints) {
     if (!reported.has(id))
@@ -80,7 +87,7 @@ export function verify(
         id,
         message: `Remove ${code.toLowerCase().replaceAll("_", "-")} constraint${detail}${rule ? `: ${rule.description}` : ""}`,
       });
-    } else if (rule && handoff.schemaVersion === 2) {
+    } else if (rule && handoff.schemaVersion !== 1) {
       const current = reference(rule);
       const previous = refs.get(id);
       if (
@@ -100,6 +107,11 @@ export function verify(
             revision: previous.revision,
             contentHash: previous.contentHash,
           },
+          ...(retained.has(id)
+            ? {
+                changes: fieldChanges(retained.get(id) as Constraint, rule),
+              }
+            : {}),
         });
       }
     }
@@ -116,7 +128,7 @@ export function verify(
   );
   return {
     schemaVersion: handoff.schemaVersion,
-    ...(handoff.schemaVersion === 2
+    ...(handoff.schemaVersion !== 1
       ? {
           tracking: "content" as const,
           activeConstraintCount: expectedConstraints.length,
@@ -137,7 +149,29 @@ export function snapshot(
   task: string,
   scope: string,
   asOf: string,
-): ContentHandoff {
+  options?: { includeContent?: false },
+): ContentHandoff;
+export function snapshot(
+  manifest: Manifest,
+  task: string,
+  scope: string,
+  asOf: string,
+  options: { includeContent: true },
+): RetainedHandoff;
+export function snapshot(
+  manifest: Manifest,
+  task: string,
+  scope: string,
+  asOf: string,
+  options: { includeContent?: boolean },
+): ContentHandoff | RetainedHandoff;
+export function snapshot(
+  manifest: Manifest,
+  task: string,
+  scope: string,
+  asOf: string,
+  options: { includeContent?: boolean } = {},
+): ContentHandoff | RetainedHandoff {
   if (!task.trim()) throw new InputError("--task: expected a non-empty task");
   const result = verify(
     manifest,
@@ -146,13 +180,99 @@ export function snapshot(
     asOf,
   );
   const byId = new Map(manifest.constraints.map((rule) => [rule.id, rule]));
-  return {
-    schemaVersion: 2,
+  const base = {
     task,
     scope,
     capturedAt: result.asOf,
-    activeConstraints: result.expectedConstraints.map((id) =>
-      reference(byId.get(id) as Constraint),
-    ),
+  };
+  const rules = result.expectedConstraints.map(
+    (id) => byId.get(id) as Constraint,
+  );
+  return options.includeContent
+    ? {
+        ...base,
+        schemaVersion: 3,
+        activeConstraints: rules.map((rule) => ({
+          ...reference(rule),
+          content: retainedContent(rule),
+        })),
+      }
+    : { ...base, schemaVersion: 2, activeConstraints: rules.map(reference) };
+}
+
+const fields = [
+  "id",
+  "scope",
+  "description",
+  "source",
+  "expiresAt",
+  "revokedAt",
+  "replacedBy",
+  "supersededAt",
+  "revision",
+] as const;
+
+function fieldChanges(
+  previous: Constraint,
+  current: Constraint,
+): FieldChange[] {
+  const before = retainedContent(previous);
+  const after = retainedContent(current);
+  return fields
+    .filter((field) => before[field] !== after[field])
+    .map((field) => ({
+      field,
+      before: before[field] ?? null,
+      after: after[field] ?? null,
+    }));
+}
+
+/** Explains the supplied manifest at one instant; does not read a handoff. */
+export function explain(
+  manifest: Manifest,
+  scope: string,
+  asOf: string,
+): Explanation {
+  identifier(scope, "scope");
+  const time = timestamp(asOf, "asOf");
+  const rules = [...manifest.constraints]
+    .sort((a, b) => compare(a.id, b.id))
+    .map((rule) => {
+      const decision: Explanation["rules"][number]["decision"] =
+        inactive(rule, scope, time) ?? "ACTIVE";
+      let reason: string;
+      switch (decision) {
+        case "ACTIVE":
+          reason = `${rule.scope === "global" ? "Global rule" : "Selected scope matches"}; no lifecycle transition is effective`;
+          break;
+        case "OUT_OF_SCOPE":
+          reason = `Rule scope '${rule.scope}' does not match '${scope}' and is not global`;
+          break;
+        case "REVOKED":
+          reason = `Revoked at ${new Date(rule.revokedAt ?? "").toISOString()}`;
+          break;
+        case "SUPERSEDED":
+          reason = `Superseded at ${new Date(rule.supersededAt ?? "").toISOString()}; replaced by '${rule.replacedBy}'`;
+          break;
+        case "EXPIRED":
+          reason = `Expired at ${new Date(rule.expiresAt ?? "").toISOString()}`;
+          break;
+      }
+      return {
+        id: rule.id,
+        scope: rule.scope,
+        description: rule.description,
+        source: rule.source,
+        decision,
+        reason,
+      };
+    });
+  return {
+    schemaVersion: 1,
+    scope,
+    asOf: new Date(time).toISOString(),
+    activeConstraintCount: rules.filter((rule) => rule.decision === "ACTIVE")
+      .length,
+    rules,
   };
 }

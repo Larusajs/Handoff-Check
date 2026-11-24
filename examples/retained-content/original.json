@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "constraints": [
+    {
+      "id": "MIGRATION-REVIEW",
+      "scope": "staging",
+      "revision": 1,
+      "description": "Require review before applying staging migrations",
+      "source": "synthetic:migration-policy"
+    }
+  ]
+}

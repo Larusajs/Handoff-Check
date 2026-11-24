@@ -3,7 +3,7 @@
 A deterministic, local CLI that verifies active constraints before a coding agent
 resumes work.
 
-**Version: 0.3.1.**
+**Version: 0.4.0.**
 
 A task summary may preserve the goal while losing an active rule, carrying an
 expired restriction, or moving a staging-only instruction into production.
@@ -18,8 +18,8 @@ Source references are review metadata and are never fetched.
 Run in the repository where your agent works:
 
 ```sh
-npx handoff-check@0.3.1 init --scope staging --agent both --dry-run
-npx handoff-check@0.3.1 init --scope staging --agent both
+npx handoff-check@0.4.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.4.0 init --scope staging --agent both
 ```
 
 This creates `.handoff-check.json`, starter `constraints.json` and `handoff.json`,
@@ -33,7 +33,7 @@ on verification. Revisions and hashes detect edits under an unchanged rule ID.
 Ask a resuming agent to use the installed skill, or run:
 
 ```sh
-npx handoff-check@0.3.1 verify --format json --require-content
+npx handoff-check@0.4.0 verify --format json --require-content
 ```
 
 The saved config supplies paths and scope. `init --ci` also creates a pinned GitHub
@@ -42,7 +42,7 @@ agent execution; CI enforces the declared-ID comparison when its workflow runs.
 Neither checks whether the agent obeys a rule's meaning.
 
 Node.js 22+ is required; end users do not need Bun. Global installation is also
-available: `npm install --global handoff-check@0.3.1`. For contributor builds or
+available: `npm install --global handoff-check@0.4.0`. For contributor builds or
 offline package testing, see the [setup guide](docs/agent-integration.md).
 
 For a complete first-rule walkthrough, including a passing baseline and a detected
@@ -65,7 +65,7 @@ default but are explicitly marked. Unexpected reported IDs still fail.
 To require actual active rules, opt in:
 
 ```sh
-npx handoff-check@0.3.1 verify --require-content --require-active --format json
+npx handoff-check@0.4.0 verify --require-content --require-active --format json
 ```
 
 A zero active set produces global NO_ACTIVE_CONSTRAINTS (no fake ID), mismatch
@@ -83,8 +83,8 @@ init and snapshot reject it. See the
 After reviewing rules at handoff creation, capture a new baseline:
 
 ```sh
-npx handoff-check@0.3.1 snapshot --task "Resume migration review" --output handoff.next.json
-npx handoff-check@0.3.1 verify --handoff handoff.next.json --require-content --format json
+npx handoff-check@0.4.0 snapshot --task "Resume migration review" --output handoff.next.json
+npx handoff-check@0.4.0 verify --handoff handoff.next.json --require-content --format json
 ```
 
 Snapshot creates a new file exclusively. Review it before deliberately replacing
@@ -100,8 +100,41 @@ CHANGED      C-07  Review changed constraint: ...; handoff revision 1, current r
 ```
 
 JSON findings include expected/reported revision and hash. This detects a change;
-it does not show a text diff or authenticate either file. Source reference text is
+v2 does not retain old text or authenticate either file. Source reference text is
 hashed, but referenced documents are not fetched or checked.
+
+## Explain rules and review field changes
+
+```sh
+npx handoff-check@0.4.0 explain --format markdown
+npx handoff-check@0.4.0 snapshot --task "Review migration" --include-content --output handoff.reviewed.json
+npx handoff-check@0.4.0 verify --handoff handoff.reviewed.json --require-content --format markdown
+```
+
+`explain` shows every manifest rule's applicability for the selected scope/time,
+including global, out-of-scope and inactive rules. It uses the same lifecycle
+precedence as verify, never reads the handoff, and exits 0 for a valid explanation.
+It is not a handoff verification. Text, JSON and Markdown are supported.
+
+Snapshot still creates v2 by default. Explicit `--include-content` creates a
+**v3 handoff** retaining complete old rule content. For active `CHANGED` rules,
+v3 JSON adds ordered `changes` with typed `before` (saved) and `after` (current)
+values; null means an absent optional field. Text/Markdown show these field deltas,
+including revision-only changes. Lifecycle findings retain precedence. V2 reports
+say previous content is unavailable; hashes cannot reconstruct it.
+
+Retained descriptions and source references may contain sensitive data. Review
+before storing or sharing snapshots/reports; retention is never automatic. V3
+validates each stored rule against its ID, revision and hash, but this does not
+authenticate either file. Upgrade all consumers before adopting v3: older CLIs
+cannot read it. No input migration is needed to keep using v1/v2 on 0.4.
+
+`verify --format markdown` preserves exit codes 0/1/2 and includes scope, time,
+active count, tracking mode, requested policies and findings. To save a report,
+redirect stdout to a separate file; a shell creates/truncates the destination, so
+never choose a manifest or handoff path. Markdown is verify/explain-only.
+See [ADR 0004](docs/decisions/0004-explainable-verification.md) and the
+[retained-content example](examples/retained-content/handoff.json).
 
 See the [v2 handoff schema](schemas/handoff.v2.schema.json),
 [v2 manifest schema](schemas/constraints.v2.schema.json), and
@@ -113,13 +146,13 @@ manifest; its current manifest edits the description without bumping revision.
 
 V1 handoffs remain supported in ID-only mode with unchanged v1 JSON result fields.
 They cannot detect content edits. `--require-content` rejects them instead of
-silently falling back. V2 handoffs work with either v1 manifests (implicit revision `1`)
+silently falling back. V2/v3 handoffs work with either v1 manifests (implicit revision `1`)
 or revisioned v2 manifests. Scope must match the v2 handoff's saved scope.
 
 Review current rules, capture a new v2 baseline, and deliberately update the saved
 handoff. Existing inputs are preserved by init, not silently upgraded. Review
 installed skills, instruction blocks and CI commands to update their pinned
-version to 0.3.1 and add `--require-content`. Init refuses to overwrite differing
+version to 0.4.0 and add `--require-content`. Init refuses to overwrite differing
 integrations; compare them with the new packaged templates and update reviewed
 copies explicitly. Never refresh before checking resumed work or reuse capturedAt
 as the clock for real resumed work.
@@ -244,13 +277,18 @@ handoff-check verify --scope <scope>
   [--constraints <path>]   default: constraints.json
   [--handoff <path>]       default: handoff.json
   [--as-of <UTC time>]     default: current time, captured once
-  [--format text|json]     default: text
-  [--require-content]      require a v2 content-aware handoff
+  [--format text|json|markdown] default: text
+  [--require-content]      require a v2/v3 content-aware handoff
   [--require-active]       fail when no active constraints apply
 
 handoff-check snapshot --task <task>
   [--config <path>] [--constraints <path>] [--scope <scope>]
   [--as-of <UTC time>] [--output <new-file>] [--format text|json]
+  [--include-content]      opt-in v3 retained content; default v2
+
+handoff-check explain
+  [--config <path>] [--constraints <path>] [--scope <scope>]
+  [--as-of <UTC time>] [--format text|json|markdown]
 
 handoff-check init --scope <scope>
   [--agent codex|claude|both|none] [--dry-run] [--ci] [--format text|json]
@@ -269,7 +307,7 @@ include global rules even when no scope-specific rules exist.
 
 | Exit code | Meaning                                                    |
 | --------- | ---------------------------------------------------------- |
-| 0         | Verification succeeded, including requested policies       |
+| 0         | Verification succeeded, or explain/init/snapshot succeeded |
 | 1         | Rule or active-set policy mismatch; inspect findings       |
 | 2         | Invalid arguments, invalid input, or unreadable input file |
 

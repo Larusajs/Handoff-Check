@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Handoff Check retained-content handoff v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "task",
+    "scope",
+    "capturedAt",
+    "activeConstraints"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 3
+    },
+    "task": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "scope": {
+      "$ref": "#/$defs/id"
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,3})?Z$"
+    },
+    "activeConstraints": {
+      "type": "array",
+      "description": "Unique IDs; each content id/revision/canonical hash must agree with its reference. The CLI enforces these checks and rejects self-replacements. Replacement targets need not occur in this snapshot.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "revision", "contentHash", "content"],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}(?![\\s\\S])"
+          },
+          "content": {
+            "$ref": "#/$defs/constraint"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])"
+    },
+    "text": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,3})?Z$",
+      "description": "UTC only; real calendar dates required. The CLI also rejects leap seconds and rollover dates."
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "scope", "description", "source", "revision"],
+      "dependentRequired": {
+        "replacedBy": ["supersededAt"],
+        "supersededAt": ["replacedBy"]
+      },
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "scope": {
+          "$ref": "#/$defs/identifier"
+        },
+        "description": {
+          "$ref": "#/$defs/text"
+        },
+        "source": {
+          "$ref": "#/$defs/text"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "revokedAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "replacedBy": {
+          "$ref": "#/$defs/identifier"
+        },
+        "supersededAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      }
+    }
+  }
+}

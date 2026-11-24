@@ -49,6 +49,10 @@ jobs:
           npx --yes --offline --package="$PACKAGE" handoff-check snapshot --task "Resume migrations" --output handoff.next.json
           npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.next.json --require-content --require-active --format json > active-result.json
           node -e 'const r=require("./active-result.json");if(r.status!=="verified"||r.activeConstraintCount!==1)process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check explain --format json > explanation.json
+          node -e 'const r=require("./explanation.json");if(r.activeConstraintCount!==1||r.rules[0].decision!=="ACTIVE")process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check snapshot --task "Review retained baseline" --include-content --output handoff.retained.json
+          npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.retained.json --require-content --format markdown > report.md
           node -e 'const fs=require("node:fs"),p=JSON.parse(fs.readFileSync("constraints.json"));p.constraints[0].description="Require two reviewers";fs.writeFileSync("constraints.json",JSON.stringify(p))'
           if npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.next.json --require-content --format json > changed.json; then
             echo "Expected same-ID content change to fail"
@@ -58,3 +62,11 @@ jobs:
             test "$VERIFY_EXIT" -eq 1
           fi
           node -e 'const r=require("./changed.json");if(r.findings.length!==1||r.findings[0].code!=="CHANGED")process.exit(1)'
+          if npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.retained.json --require-content --format json > retained-change.json; then
+            echo "Expected retained baseline content change to fail"
+            exit 1
+          else
+            VERIFY_EXIT=$?
+            test "$VERIFY_EXIT" -eq 1
+          fi
+          node -e 'const r=require("./retained-change.json");if(r.schemaVersion!==3||r.findings[0].changes[0].field!=="description"||r.findings[0].changes[0].before!=="Review migrations"||r.findings[0].changes[0].after!=="Require two reviewers")process.exit(1)'
