@@ -3,7 +3,20 @@
   "version": "0.1.0",
   "description": "A deterministic, local CLI that verifies active constraints before a coding agent resumes work.",
   "type": "module",
+  "packageManager": "bun@1.2.10",
   "license": "MIT",
+  "homepage": "https://github.com/Larusajs/Handoff-Check#readme",
+  "bugs": {
+    "url": "https://github.com/Larusajs/Handoff-Check/issues"
+  },
+  "keywords": [
+    "cli",
+    "handoff",
+    "constraints",
+    "coding-agents",
+    "codex",
+    "claude-code"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Larusajs/Handoff-Check.git"
@@ -15,7 +28,12 @@
     "dist",
     "schemas",
     "examples",
+    "docs",
     "skills",
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
     "README.md",
     "LICENSE"
   ],
@@ -24,16 +42,19 @@
   },
   "scripts": {
     "dev": "bun src/cli.ts",
-    "test": "bun test",
+    "test": "bun run build && bun test",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",
     "build": "bun build src/cli.ts --target node --outdir dist",
-    "check": "bun run lint && bun run typecheck && bun test && bun run build"
+    "prepack": "bun run build",
+    "check": "bun run lint && bun run typecheck && bun run test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
     "@types/bun": "1.4.5",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "typescript": "7.0.2"
   }
 }
