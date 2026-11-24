@@ -8,8 +8,8 @@ Bun, API keys, and GitHub Actions are not required. All rules below are syntheti
 ```sh
 mkdir handoff-check-demo
 cd handoff-check-demo
-npx handoff-check@0.3.1 init --scope staging --agent none
-npx handoff-check@0.3.1 verify --require-content
+npx handoff-check@0.4.0 init --scope staging --agent none
+npx handoff-check@0.4.0 verify --require-content
 ```
 
 The starter passes with `PASS (EMPTY)` and `0 active constraints checked`.
@@ -41,7 +41,7 @@ does not fetch it or check the contents of a referenced document.
 Before capturing a baseline, run:
 
 ```sh
-npx handoff-check@0.3.1 verify --require-content --require-active
+npx handoff-check@0.4.0 verify --require-content --require-active
 ```
 
 Expect `MISSING MIGRATION-REVIEW`, one active constraint, and exit 1. The old
@@ -50,8 +50,8 @@ starter handoff does not include the new rule yet.
 ## Capture and verify a reviewed baseline
 
 ```sh
-npx handoff-check@0.3.1 snapshot --task "Review staging migration" --output handoff.reviewed.json
-npx handoff-check@0.3.1 verify --handoff handoff.reviewed.json --require-content --require-active
+npx handoff-check@0.4.0 snapshot --task "Review staging migration" --output handoff.reviewed.json
+npx handoff-check@0.4.0 verify --handoff handoff.reviewed.json --require-content --require-active
 ```
 
 Review the generated file before relying on it. The verification command should
@@ -70,7 +70,7 @@ In `constraints.json`, change the description to
 handoff unchanged, then run:
 
 ```sh
-npx handoff-check@0.3.1 verify --handoff handoff.reviewed.json --require-content --require-active --format json
+npx handoff-check@0.4.0 verify --handoff handoff.reviewed.json --require-content --require-active --format json
 ```
 
 Expect `status: "mismatch"`, `activeConstraintCount: 1`, a `CHANGED` finding, and
@@ -79,8 +79,9 @@ deliberate policy update, also increment its revision during review.
 
 Do not recapture a baseline just to make a resumed check pass. Review the changed
 rule and resolve affected work first; only then deliberately capture and adopt a
-new baseline. Current snapshots detect changes but do not retain old descriptions
-or display textual diffs.
+new baseline. Default v2 snapshots detect changes without retaining old descriptions.
+For opt-in v3 field-level diffs and Markdown reports, see the
+[0.4 guide](explainability.md). Do not recapture a resumed baseline to add retention.
 
 ## Interpret the result correctly
 

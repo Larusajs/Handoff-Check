@@ -1,6 +1,6 @@
 # Development plan
 
-Status: proposed after 0.3.0; documentation/onboarding work ships in 0.3.1.
+Status: 0.3.1 onboarding and 0.4 explainability implemented; later milestones proposed.
 Research reviewed: 2026-11-24. Version labels below are targets, not release promises.
 
 ## Product direction
@@ -45,7 +45,13 @@ Acceptance: execute the walkthrough using a built package from a separate consum
 directory; observe expected statuses/codes and verify that verification does not
 rewrite the saved baseline. Check documented flags against actual CLI behavior.
 
-## 0.4: explainable verification
+## 0.4: explainable verification (implemented)
+
+Implemented in 0.4.0 under [ADR 0004](decisions/0004-explainable-verification.md):
+manifest-only explain, opt-in v3 retained-content snapshots and field-level deltas,
+and Markdown reports. Default v2 snapshots and existing v1/v2 JSON remain compatible.
+The following acceptance criteria govern the implementation; pilot measurements
+remain future work and are not implied by shipping these features.
 
 Priority: high. Dependencies: an ADR for snapshot evolution and privacy/storage choices.
 

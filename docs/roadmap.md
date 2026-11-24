@@ -2,7 +2,11 @@
 
 See the [development plan](development-plan.md) for research evidence, proposed
 0.4–0.6 milestones, dependencies, pilot validation, and acceptance criteria.
-These are proposed milestones, not implemented features or promised dates.
+The plan distinguishes implemented releases from proposed milestones and dates.
+
+Implemented in 0.4.0: shared-lifecycle explain, opt-in retained-content v3
+snapshots and field deltas, and escaped Markdown verify/explain reports.
+See [the guide](explainability.md).
 
 0.3.1 improves published-package onboarding and CLI reference accuracy, and adds
 a [first-rule walkthrough](first-check.md). Verifier behavior is unchanged.

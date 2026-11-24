@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+- Add manifest-only explain in text, JSON and Markdown using verifier lifecycle decisions.
+- Add opt-in snapshot --include-content with strictly validated retained-content v3 handoffs.
+- Show ordered field-level before/after changes for active CHANGED rules in v3 results.
+- Add Markdown verification reports with scope/time, count, tracking, policies and findings.
+- Preserve v1/v2 JSON contracts, default v2 snapshots and read-only verification.
+- Escape untrusted Markdown structure/HTML and terminal formatting controls.
+
 ## 0.3.1
 
 - Replace obsolete pre-publication onboarding instructions with registry usage.

@@ -9,8 +9,8 @@ infers rules from a summary.
 From the consuming repository root:
 
 ```sh
-npx handoff-check@0.3.1 init --scope staging --agent both --dry-run
-npx handoff-check@0.3.1 init --scope staging --agent both
+npx handoff-check@0.4.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.4.0 init --scope staging --agent both
 ```
 
 Choose `codex`, `claude`, `both` (default), or `none`. Generated integrations:
@@ -39,8 +39,8 @@ npm pack
 From a separate consuming project, substitute the actual absolute tarball path:
 
 ```sh
-npx --offline --yes --package=/absolute/path/handoff-check-0.3.1.tgz handoff-check init --scope staging --agent both
-npx --offline --yes --package=/absolute/path/handoff-check-0.3.1.tgz handoff-check verify --format json --require-content
+npx --offline --yes --package=/absolute/path/handoff-check-0.4.0.tgz handoff-check init --scope staging --agent both
+npx --offline --yes --package=/absolute/path/handoff-check-0.4.0.tgz handoff-check verify --format json --require-content
 ```
 
 Bun is not required for these consumer commands. Generated agent commands use the
@@ -64,7 +64,14 @@ At handoff creation, review current rules and run the configured CLI's
 `snapshot --task "Resume the task" --output handoff.next.json`. Review that file
 before explicitly promoting it to the configured handoff. On resume, verify the
 saved baseline first; do not regenerate it to hide a CHANGED finding. Snapshot
-records revisions/hashes, not old text, and capturedAt is not the evaluation clock.
+records revisions/hashes by default, and capturedAt is not the evaluation clock.
+0.4 optionally retains old text in v3 with explicit `--include-content` at reviewed
+capture time. This copies full rule content into the handoff: review sensitive
+data before committing/sharing. Default v2 capture is unchanged; upgrade every
+consumer before adopting v3. Both v2 and v3 satisfy `--require-content`.
+Use `explain` for applicability diagnostics and `verify --format markdown` for
+review reports; explain exit 0 does not verify a handoff. See the
+[explainability guide](explainability.md).
 
 Existing v1 inputs are preserved. Review/capture a v2 handoff and explicitly update
 old skill/managed-block/CI pins before relying on content tracking. Existing v1
