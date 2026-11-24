@@ -3,7 +3,7 @@
 A deterministic, local CLI that verifies active constraints before a coding agent
 resumes work.
 
-**Status: initial MVP; not yet published.**
+**Status: 0.1.0 release candidate. Public npm publication is pending.**
 
 A task summary may preserve the goal while losing an active rule, carrying an
 expired restriction, or moving a staging-only instruction into production.
@@ -13,6 +13,69 @@ for the selected scope and time.
 No API keys, network calls, model calls, or agent transcript access are required.
 Source references are review metadata and are never fetched.
 
+## Quick start
+
+Once the npm package is published, run in the repository where your agent works:
+
+```sh
+npx handoff-check@0.1.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.1.0 init --scope staging --agent both
+```
+
+This creates `.handoff-check.json`, starter `constraints.json` and `handoff.json`,
+installs skills for Codex and Claude Code, and appends managed instruction blocks
+to `AGENTS.md` and `CLAUDE.md`. Choose `--agent codex`, `claude`, or `none` to limit
+integrations. Scope is explicit; choose the intended environment.
+
+Starters intentionally contain zero rules. Add reviewed constraints and update
+the handoff's `activeConstraints` before relying on a successful verification.
+Ask a resuming agent to use the installed skill, or run:
+
+```sh
+npx handoff-check@0.1.0 verify --format json
+```
+
+The saved config supplies paths and scope. `init --ci` also creates a pinned GitHub
+Actions verification workflow. Skill/instruction installation does not guarantee
+agent execution; CI enforces the declared-ID comparison when its workflow runs.
+Neither checks whether the agent obeys a rule's meaning.
+
+Until publication, use a local package via the [setup guide](docs/agent-integration.md).
+Node.js 22+ is required; end users do not need Bun. After publication, global
+installation is also available: `npm install --global handoff-check@0.1.0`.
+
+## Configuration and initialization
+
+`verify` reads only `.handoff-check.json` in the current directory by default,
+without searching parents. Missing implicit config falls back to default input
+names, but scope is still required. Explicit `--config <path>` must exist.
+
+```json
+{
+  "schemaVersion": 1,
+  "constraints": "constraints.json",
+  "handoff": "handoff.json",
+  "scope": "staging"
+}
+```
+
+Configured paths resolve from the config directory. Explicit `--constraints` and
+`--handoff` paths resolve from cwd and override config; `--scope` overrides saved
+scope. Clock/format remain CLI-only. See [config schema](schemas/config.v1.schema.json).
+
+`init` preserves valid existing inputs/config, appends only its managed block to
+agent instructions, and is idempotent. Conflicting skills or managed blocks,
+overlapping paths, and symlink output paths are rejected before writes. Existing
+config must specify scope; changing init scope requires explicitly editing config.
+Custom init input paths must stay inside the project; verify can read external
+configured files. Path collisions are checked conservatively across letter case
+to support filesystems with case-insensitive names.
+
+`--dry-run --format json` shows exact proposed changes without writes. Init is not
+a filesystem transaction: permission/disk/concurrent-write errors can leave partial
+output, reported in the error. Inspect it before retrying; do not initialize the
+same project concurrently. Verification remains read-only.
+
 ## Development
 
 ```sh
@@ -21,7 +84,7 @@ bun run check
 ```
 
 Bun 1.2.10 is used in CI. Build output runs on Node.js 22 or newer. The package
-name is provisional until registry availability is checked before publication.
+name is `handoff-check`; claiming it requires authenticated npm publication.
 
 ## Try the reproducible demo
 
@@ -95,6 +158,7 @@ and replacement relationships. Verification never updates these files.
 
 ```text
 handoff-check verify --scope <scope>
+  [--config <path>]        default: cwd/.handoff-check.json, when present
   [--constraints <path>]   default: constraints.json
   [--handoff <path>]       default: handoff.json
   [--as-of <UTC time>]     default: current time, captured once
@@ -102,7 +166,8 @@ handoff-check verify --scope <scope>
 ```
 
 The same inputs, scope, and time produce the same output. Use `--as-of` for
-reproducible CI checks. Relative paths resolve from the current working directory.
+reproducible CI checks. Explicit CLI paths resolve from the current working directory;
+configured paths resolve from the config file's directory.
 Scope names and IDs are case-sensitive; arbitrary scope names are accepted and
 include global rules even when no scope-specific rules exist.
 
@@ -122,7 +187,8 @@ go to stderr and use `status: "invalid"` when JSON mode has been parsed. Argumen
 parsing failures may be text. `--help` prints usage text and exits 0.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md),
-[architecture](docs/architecture.md), and [roadmap](docs/roadmap.md).
+[architecture](docs/architecture.md), [roadmap](docs/roadmap.md), and
+[release operations](docs/releasing.md).
 
 ## Coding-agent adapters
 

@@ -13,7 +13,26 @@
 ## Release operations
 
 - Run the configured platform matrix on hosted CI before tagging a release.
-- Confirm registry identity and obtain explicit authorization before publishing.
+- Publish the reviewed `handoff-check` package for `npx` use after npm authentication.
+
+## End-user distribution milestone
+
+- `init --scope <scope> --agent codex|claude|both|none` creates starter contracts,
+  project config, portable skills, and managed agent instruction blocks.
+- `--dry-run` previews changes. Existing inputs remain intact; conflicting skills
+  or instruction markers fail before writing. `--ci` adds a pinned verification job.
+- Versioned `.handoff-check.json` supplies local paths and scope; explicit verify
+  flags override config. No ancestor discovery or inferred environment.
+- Test packed offline npx installation and onboarding from a separate consumer
+  directory on Linux, macOS, and Windows.
+- Merge reviewed PRs into main after CI, prepare a GitHub release, and document
+  token-free trusted publishing for subsequent npm releases.
+
+## Following releases
+
+- Incorporate feedback from real repositories before expanding the contract.
+- Consider host-specific enforcement hooks separately from the portable skill;
+  neither skill discovery nor agent instructions guarantee execution.
 
 ## Outside the initial scope
 

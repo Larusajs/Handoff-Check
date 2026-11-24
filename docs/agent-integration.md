@@ -1,57 +1,74 @@
 # Agent integration
 
-The portable [handoff-check skill](../skills/handoff-check/SKILL.md) works as a
-thin adapter for Codex and Claude Code. Both use the same local CLI and JSON
-contracts. The adapter does not read transcripts, generate constraints, or modify
-manifests automatically.
+One portable [handoff-check skill](../skills/handoff-check/SKILL.md) supports both
+Codex and Claude Code by calling the same CLI. It neither reads transcripts nor
+infers rules from a summary.
 
-## Install the CLI from this source checkout
+## Registry installation
 
-The package is not published to a registry yet. With Bun installed, from this
-repository root:
+After the npm release is published, from the consuming repository root:
+
+```sh
+npx handoff-check@0.1.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.1.0 init --scope staging --agent both
+```
+
+Choose `codex`, `claude`, `both` (default), or `none`. Generated integrations:
+
+| Agent       | Skill                                   | Instruction file |
+| ----------- | --------------------------------------- | ---------------- |
+| Codex       | `.agents/skills/handoff-check/SKILL.md` | `AGENTS.md`      |
+| Claude Code | `.claude/skills/handoff-check/SKILL.md` | `CLAUDE.md`      |
+
+Review and commit generated files. `--dry-run` previews all changes. Existing valid
+inputs and surrounding instruction text are preserved; conflicts fail before
+writes. Starters have zero rules: author reviewed constraints and populate handoff
+IDs before relying on verification.
+
+## Local package before publication
+
+From this source checkout, with Bun installed:
 
 ```sh
 bun install --frozen-lockfile
 bun run check
 npm pack
-npm install --global ./larusajs-handoff-check-0.1.0.tgz
-handoff-check --help
 ```
 
-Alternatively, configure the agent to invoke `node /absolute/path/to/Handoff-Check/dist/cli.js`
-after building this checkout. Run verification from the repository containing the
-target handoff, or pass absolute input paths. A source build requires Bun;
-execution of the packaged CLI requires only Node.js 22 or newer.
+From a separate consuming project, substitute the actual absolute tarball path:
 
-## Install the skill into a target repository
+```sh
+npx --offline --yes --package=/absolute/path/handoff-check-0.1.0.tgz handoff-check init --scope staging --agent both
+npx --offline --yes --package=/absolute/path/handoff-check-0.1.0.tgz handoff-check verify --format json
+```
 
-Copy the entire `skills/handoff-check` directory from this project into the
-appropriate location in the repository where the agent works:
+Bun is not required for these consumer commands. Generated agent commands use the
+pinned registry package. Before publication, use the same tarball invocation or
+`node /absolute/path/Handoff-Check/dist/cli.js` in your local agent test prompt.
+A local tarball does not make its npm name available in the public registry.
 
-| Agent       | Target directory                |
-| ----------- | ------------------------------- |
-| Codex       | `.agents/skills/handoff-check/` |
-| Claude Code | `.claude/skills/handoff-check/` |
-
-Install into both locations if the team uses both agents. Keep each installed copy
-in sync with its reviewed upstream version. This project keeps one portable skill
-source rather than two diverging verification procedures.
-
-Invoke the installed skill explicitly with a request such as:
+## Agent workflow
 
 ```text
-Use the handoff-check skill before resuming this task. Verify constraints.json
-against handoff.json for scope staging, using the current time. Report findings.
+Resume this task. Use the handoff-check skill before continuing, verify the
+repository's configured scope using the current time, and report findings.
 ```
 
-Skill discovery and loading depend on the host agent. This is an instruction
-adapter, not an enforced hook: installing it alone does not guarantee every task
-will run the check. For enforcement, invoke the CLI explicitly in the team's
-workflow and act on its exit code.
+The agent checks IDs and reads active rule descriptions. Exit 1 means mismatch;
+exit 2 means invalid inputs/arguments. Resolve either before resuming affected work.
+A pass does not authorize an action or interpret the task summary.
 
-## Contributor workflow
+Skill discovery depends on the host agent. Skills/instructions are guidance, not
+guaranteed hooks. `init --ci` adds `.github/workflows/handoff-check.yml` pinned to
+the installed version and using saved config. This checks committed IDs on push/PR,
+not every agent turn. Host-specific hooks are a future integration because host
+events and context-reset behavior differ.
 
-The instructions for developing Handoff Check itself live in [AGENTS.md](../AGENTS.md)
-and [CONTRIBUTING.md](../CONTRIBUTING.md). They are distinct from the user-facing
-handoff verification skill. See [development coordination](development.md) for
-shared-checkout roles and review gates.
+## Upgrades and contributor instructions
+
+Matching integrations are preserved on repeated init. If a skill or managed block
+differs, compare it to the new package and review/update explicitly; there is no
+force-overwrite mode. Commands stay pinned until a reviewed upgrade.
+
+See [AGENTS.md](../AGENTS.md), [CONTRIBUTING.md](../CONTRIBUTING.md), and
+[development coordination](development.md) for developing Handoff Check itself.

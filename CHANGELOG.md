@@ -9,3 +9,5 @@
 - Add reproducible failing/corrected demos and automated checks.
 - Add a portable Claude Code/Codex skill and agent installation guidance.
 - Escape terminal control characters in text diagnostics.
+- Add project initialization, agent selection, managed instructions, dry-run preview,
+  optional CI setup, project configuration, and packed npx onboarding checks.
