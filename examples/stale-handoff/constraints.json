@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "constraints": [
+    {
+      "id": "C-02",
+      "scope": "staging",
+      "description": "Staging freeze ended Friday at 18:00 UTC",
+      "source": "synthetic:staging-freeze-decision",
+      "expiresAt": "2026-11-20T18:00:00Z"
+    },
+    {
+      "id": "C-07",
+      "scope": "staging",
+      "description": "Require review before applying migrations",
+      "source": "synthetic:migration-review-policy"
+    }
+  ]
+}

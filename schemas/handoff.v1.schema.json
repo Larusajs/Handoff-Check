@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Handoff Check handoff v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "task", "activeConstraints"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "task": { "type": "string", "pattern": "\\S" },
+    "activeConstraints": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])"
+      }
+    }
+  }
+}
