@@ -30,7 +30,12 @@
 
 ## Following releases
 
+Implemented in 0.2.0: revisioned v2 manifests, content-aware handoff snapshots,
+canonical SHA-256 comparison, CHANGED findings, explicit --require-content,
+legacy compatibility and reviewed migration guidance. No automatic baseline refresh.
+
 - Incorporate feedback from real repositories before expanding the contract.
+- Consider optional old-content storage for textual diffs in a later version.
 - Consider host-specific enforcement hooks separately from the portable skill;
   neither skill discovery nor agent instructions guarantee execution.
 

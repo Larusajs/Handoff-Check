@@ -9,8 +9,8 @@ infers rules from a summary.
 After the npm release is published, from the consuming repository root:
 
 ```sh
-npx handoff-check@0.1.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.1.0 init --scope staging --agent both
+npx handoff-check@0.2.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.2.0 init --scope staging --agent both
 ```
 
 Choose `codex`, `claude`, `both` (default), or `none`. Generated integrations:
@@ -38,8 +38,8 @@ npm pack
 From a separate consuming project, substitute the actual absolute tarball path:
 
 ```sh
-npx --offline --yes --package=/absolute/path/handoff-check-0.1.0.tgz handoff-check init --scope staging --agent both
-npx --offline --yes --package=/absolute/path/handoff-check-0.1.0.tgz handoff-check verify --format json
+npx --offline --yes --package=/absolute/path/handoff-check-0.2.0.tgz handoff-check init --scope staging --agent both
+npx --offline --yes --package=/absolute/path/handoff-check-0.2.0.tgz handoff-check verify --format json --require-content
 ```
 
 Bun is not required for these consumer commands. Generated agent commands use the
@@ -57,6 +57,18 @@ repository's configured scope using the current time, and report findings.
 The agent checks IDs and reads active rule descriptions. Exit 1 means mismatch;
 exit 2 means invalid inputs/arguments. Resolve either before resuming affected work.
 A pass does not authorize an action or interpret the task summary.
+
+In 0.2, skills and generated instructions require content-aware v2 handoffs.
+At handoff creation, review current rules and run the configured CLI's
+`snapshot --task "Resume the task" --output handoff.next.json`. Review that file
+before explicitly promoting it to the configured handoff. On resume, verify the
+saved baseline first; do not regenerate it to hide a CHANGED finding. Snapshot
+records revisions/hashes, not old text, and capturedAt is not the evaluation clock.
+
+Existing v1 inputs are preserved. Review/capture a v2 handoff and explicitly update
+old skill/managed-block/CI pins before relying on content tracking. Existing v1
+manifests use implicit revision 1; v2 manifests make revisions explicit.
+See [upgrade instructions](../README.md#upgrade-from-01).
 
 Skill discovery depends on the host agent. Skills/instructions are guidance, not
 guaranteed hooks. `init --ci` adds `.github/workflows/handoff-check.yml` pinned to

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- Detect same-ID rule edits through revision and canonical SHA-256 references.
+- Add v2 manifest/handoff schemas and CHANGED findings with expected/reported data.
+- Add snapshot capture with exclusive new-file output and explicit scope/time.
+- Preserve legacy v1 ID checks; add --require-content for explicit enforcement.
+- Use v2 starters and content-aware agent/CI guidance with a reviewed migration path.
+
 ## 0.1.0
 
 - Establish English contributor and coding-agent guidance and project policies.
