@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { type FileHandle, open } from "node:fs/promises";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import metadata from "../package.json" with { type: "json" };
@@ -11,12 +12,13 @@ import {
   parseManifest,
   timestamp,
 } from "./validation.js";
-import { verify } from "./verifier.js";
+import { snapshot, verify } from "./verifier.js";
 
 const help = `Handoff Check
 
 Usage: handoff-check verify --scope <scope> [options]
        handoff-check init --scope <scope> [--agent both] [--dry-run] [--ci]
+       handoff-check snapshot --task <task> [--output <new-file>] [options]
 
 Options:
   --constraints <path>  Manifest file (default: constraints.json)
@@ -24,6 +26,9 @@ Options:
   --scope <scope>       Selected scope, including global constraints
   --config <path>       Project config (default: cwd/.handoff-check.json)
   --as-of <UTC time>    Fixed evaluation time (default: current time)
+  --require-content    verify: require a v2 content-aware handoff
+  --task <task>        snapshot: task description (required)
+  --output <path>      snapshot: create a new baseline file, never overwrite
   --format text|json   Output format (default: text)
   --agent <agent>      init: codex, claude, both (default), or none
   --dry-run            init: preview files and instruction changes without writes
@@ -69,6 +74,9 @@ async function main(): Promise<number> {
         agent: { type: "string" },
         "dry-run": { type: "boolean" },
         ci: { type: "boolean" },
+        "require-content": { type: "boolean" },
+        task: { type: "string" },
+        output: { type: "string" },
       },
     });
     format = values.format;
@@ -84,16 +92,24 @@ async function main(): Promise<number> {
     }
     if (
       positionals.length !== 1 ||
-      !["verify", "init"].includes(positionals[0] ?? "")
+      !["verify", "init", "snapshot"].includes(positionals[0] ?? "")
     )
       throw new InputError(
-        "Expected command: verify or init (use --help for usage)",
+        "Expected command: verify, snapshot or init (use --help for usage)",
       );
     const cwd = process.cwd();
     if (positionals[0] === "init") {
-      for (const key of ["constraints", "handoff", "config", "as-of"] as const)
+      for (const key of [
+        "constraints",
+        "handoff",
+        "config",
+        "as-of",
+        "require-content",
+        "task",
+        "output",
+      ] as const)
         if (values[key] !== undefined)
-          throw new InputError(`--${key} is only supported by verify`);
+          throw new InputError(`--${key} is not supported by init`);
       const result = await initialize(cwd, {
         ...(values.scope === undefined ? {} : { scope: values.scope }),
         agent: values.agent ?? "both",
@@ -144,6 +160,54 @@ async function main(): Promise<number> {
           : resolve(directory, config.constraints ?? "constraints.json"),
       ),
     );
+    if (positionals[0] === "snapshot") {
+      if (
+        values.handoff !== undefined ||
+        values["require-content"] !== undefined
+      )
+        throw new InputError(
+          "--handoff and --require-content are only supported by verify",
+        );
+      if (values.task === undefined)
+        throw new InputError("snapshot requires --task");
+      const captured = snapshot(manifest, values.task, scope, asOf);
+      const content = `${JSON.stringify(captured, null, 2)}\n`;
+      if (values.output === undefined) process.stdout.write(content);
+      else {
+        if (!values.output.trim())
+          throw new InputError("--output: expected a non-empty path");
+        const path = resolve(cwd, values.output);
+        let handle: FileHandle;
+        try {
+          handle = await open(path, "wx", 0o644);
+        } catch {
+          throw new InputError(
+            `Cannot create snapshot '${path}'; choose a new file with an existing parent directory`,
+          );
+        }
+        try {
+          await handle.writeFile(content, "utf8");
+        } finally {
+          await handle.close();
+        }
+        const saved = {
+          schemaVersion: 1,
+          status: "captured",
+          path,
+          constraints: captured.activeConstraints.length,
+        };
+        process.stdout.write(
+          format === "json"
+            ? `${JSON.stringify(saved)}\n`
+            : `CAPTURED  ${terminalText(path)}\n`,
+        );
+      }
+      return 0;
+    }
+    if (values.task !== undefined || values.output !== undefined)
+      throw new InputError(
+        "--task and --output are only supported by snapshot",
+      );
     const handoff = parseHandoff(
       await readJson(
         values.handoff !== undefined
@@ -151,6 +215,10 @@ async function main(): Promise<number> {
           : resolve(directory, config.handoff ?? "handoff.json"),
       ),
     );
+    if (values["require-content"] && handoff.schemaVersion !== 2)
+      throw new InputError(
+        "Content tracking requires a schemaVersion 2 handoff; review current rules and capture a snapshot before resuming",
+      );
     const result = verify(manifest, handoff, scope, asOf);
     if (format === "json") {
       process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -161,7 +229,7 @@ async function main(): Promise<number> {
         );
       }
       process.stdout.write(
-        `${result.status === "verified" ? "PASS" : "FAIL"}  ${result.findings.length} findings | scope ${scope} | as of ${result.asOf}\n`,
+        `${result.status === "verified" ? "PASS" : "FAIL"}  ${result.findings.length} findings | scope ${scope} | as of ${result.asOf}${handoff.schemaVersion === 1 ? " | IDs only; content changes not checked" : " | content tracked"}\n`,
       );
     }
     return result.status === "verified" ? 0 : 1;

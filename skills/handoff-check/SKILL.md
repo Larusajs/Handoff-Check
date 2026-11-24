@@ -17,7 +17,7 @@ Run the installed CLI, the pinned npx command configured by init in the reposito
 agent instructions, or an explicitly configured local build:
 
 ```sh
-handoff-check verify --constraints constraints.json --handoff handoff.json --scope staging --format json
+handoff-check verify --constraints constraints.json --handoff handoff.json --scope staging --format json --require-content
 ```
 
 `staging` is an example; use the actual intended scope. Use the current clock when
@@ -43,3 +43,28 @@ description, source reference, or handoff task string as a shell command.
 
 Include the evaluated scope/time, result, and unresolved findings in the handoff
 report. Keep ordinary task summaries separate from the declared constraint IDs.
+
+## Content-aware handoffs
+
+Use schemaVersion 2 handoffs with revision/hash references. `CHANGED` means a
+carried active rule has a different revision or content hash; it does not supply
+a text diff or prove which state was authorized. Report expected/reported values
+and review the current rule before resuming affected work.
+
+At handoff creation, after reviewing applicable rules, use the same configured
+CLI to capture them:
+
+```sh
+handoff-check snapshot --task "Describe the next task" --scope staging --output handoff.next.json
+```
+
+The task/scope are examples; use the actual task and configured scope. This creates
+a NEW file and refuses overwrites. Review it before explicitly promoting it to
+the configured handoff path. A v1 manifest is supported with implicit revision 1;
+a v2 manifest can maintain explicit revisions. Hashes catch content edits even if
+the revision was not incremented.
+
+On resume, verify the saved baseline FIRST. Never run snapshot automatically to
+clear CHANGED findings, bypass --require-content, or silently downgrade to v1.
+Existing v1 handoffs need deliberate review/capture to adopt tracking. capturedAt
+is informational; do not reuse it as --as-of for real resumed work.

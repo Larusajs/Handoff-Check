@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "task": "Resume migration review",
+  "scope": "staging",
+  "capturedAt": "2026-11-24T10:00:00.000Z",
+  "activeConstraints": [
+    {
+      "id": "C-07",
+      "revision": 1,
+      "contentHash": "sha256:2e1217c01957cd82f81d2bdc47397e00d7c56399606f38545384bdab07ee1b3d"
+    }
+  ]
+}

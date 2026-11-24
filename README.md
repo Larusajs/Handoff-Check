@@ -3,7 +3,7 @@
 A deterministic, local CLI that verifies active constraints before a coding agent
 resumes work.
 
-**Version: 0.1.0.**
+**Version: 0.2.0.**
 
 A task summary may preserve the goal while losing an active rule, carrying an
 expired restriction, or moving a staging-only instruction into production.
@@ -18,8 +18,8 @@ Source references are review metadata and are never fetched.
 Once the npm package is published, run in the repository where your agent works:
 
 ```sh
-npx handoff-check@0.1.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.1.0 init --scope staging --agent both
+npx handoff-check@0.2.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.2.0 init --scope staging --agent both
 ```
 
 This creates `.handoff-check.json`, starter `constraints.json` and `handoff.json`,
@@ -27,12 +27,13 @@ installs skills for Codex and Claude Code, and appends managed instruction block
 to `AGENTS.md` and `CLAUDE.md`. Choose `--agent codex`, `claude`, or `none` to limit
 integrations. Scope is explicit; choose the intended environment.
 
-Starters intentionally contain zero rules. Add reviewed constraints and update
-the handoff's `activeConstraints` before relying on a successful verification.
+Starters intentionally contain zero rules. Add reviewed constraints (v2 rules need
+a positive `revision`), then capture a baseline as described below before relying
+on verification. Revisions and hashes detect edits under an unchanged rule ID.
 Ask a resuming agent to use the installed skill, or run:
 
 ```sh
-npx handoff-check@0.1.0 verify --format json
+npx handoff-check@0.2.0 verify --format json --require-content
 ```
 
 The saved config supplies paths and scope. `init --ci` also creates a pinned GitHub
@@ -42,7 +43,53 @@ Neither checks whether the agent obeys a rule's meaning.
 
 Until publication, use a local package via the [setup guide](docs/agent-integration.md).
 Node.js 22+ is required; end users do not need Bun. After publication, global
-installation is also available: `npm install --global handoff-check@0.1.0`.
+installation is also available: `npm install --global handoff-check@0.2.0`.
+
+## Catch rule edits between sessions
+
+After reviewing rules at handoff creation, capture a new baseline:
+
+```sh
+npx handoff-check@0.2.0 snapshot --task "Resume migration review" --output handoff.next.json
+npx handoff-check@0.2.0 verify --handoff handoff.next.json --require-content --format json
+```
+
+Snapshot creates a new file exclusively. Review it before deliberately replacing
+the configured handoff file with it. On resume, verify the SAVED handoff first;
+never regenerate it just to clear findings.
+
+V2 references record each rule's ID, revision and canonical SHA-256 content hash.
+An edit under the same ID is detected even if revision was not incremented.
+Revision changes (including decreases) are compared separately.
+
+```text
+CHANGED      C-07  Review changed constraint: ...; handoff revision 1, current revision 1; content hash differs
+```
+
+JSON findings include expected/reported revision and hash. This detects a change;
+it does not show a text diff or authenticate either file. Source reference text is
+hashed, but referenced documents are not fetched or checked.
+
+See the [v2 handoff schema](schemas/handoff.v2.schema.json),
+[v2 manifest schema](schemas/constraints.v2.schema.json), and
+[canonicalization contract](docs/decisions/0002-content-aware-handoffs.md).
+The [changed-rule example](examples/changed-rule/handoff.json) captures the original
+manifest; its current manifest edits the description without bumping revision.
+
+## Upgrade from 0.1
+
+V1 handoffs remain supported in ID-only mode with unchanged v1 JSON result fields.
+They cannot detect content edits. `--require-content` rejects them instead of
+silently falling back. V2 handoffs work with either v1 manifests (implicit revision `1`)
+or revisioned v2 manifests. Scope must match the v2 handoff's saved scope.
+
+Review current rules, capture a new v2 baseline, and deliberately update the saved
+handoff. Existing inputs are preserved by init, not silently upgraded. Review
+installed skills, instruction blocks and CI commands to update their pinned
+version to 0.2.0 and add `--require-content`. Init refuses to overwrite differing
+integrations; compare them with the new packaged templates and update reviewed
+copies explicitly. Never refresh before checking resumed work or reuse capturedAt
+as the clock for real resumed work.
 
 ## Configuration and initialization
 
@@ -178,8 +225,8 @@ include global rules even when no scope-specific rules exist.
 | 1         | Rule mismatch; inspect findings                            |
 | 2         | Invalid arguments, invalid input, or unreadable input file |
 
-Findings are `MISSING`, `EXPIRED`, `REVOKED`, `SUPERSEDED`, `OUT_OF_SCOPE`, or
-`UNKNOWN`, ordered by ID. A reported ID receives one primary finding according to
+Findings include `MISSING`, `EXPIRED`, `REVOKED`, `SUPERSEDED`, `OUT_OF_SCOPE`,
+`UNKNOWN`, and (for v2) `CHANGED`, ordered by ID. A reported ID receives one primary finding according to
 the precedence in the lifecycle ADR.
 
 `--format json` writes a versioned result with `status`, `scope`, `asOf`,

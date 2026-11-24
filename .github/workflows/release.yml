@@ -6,7 +6,10 @@ on:
       version:
         description: Exact reviewed package version on main
         required: true
-        default: 0.1.0
+        default: 0.2.0
+      sha256:
+        description: Reviewed tarball SHA256 (required when publish is true)
+        required: false
       publish:
         description: Publish to npm using the configured trusted publisher
         type: boolean
@@ -41,6 +44,12 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: npm pack --ignore-scripts
+      - name: Verify artifact digest
+        env:
+          EXPECTED_SHA256: ${{ inputs.sha256 }}
+          RELEASE_PUBLISH: ${{ inputs.publish }}
+        run: |
+          node -e 'const fs=require("node:fs"),crypto=require("node:crypto"),p=require("./package.json"),actual=crypto.createHash("sha256").update(fs.readFileSync(`${p.name}-${p.version}.tgz`)).digest("hex"),expected=process.env.EXPECTED_SHA256;console.log(`Artifact SHA256: ${actual}`);if(process.env.RELEASE_PUBLISH==="true"&&!/^[a-f0-9]{64}$/.test(expected||""))throw new Error("Publishing requires the reviewed artifact SHA256");if(expected&&expected!==actual)throw new Error("Artifact differs from reviewed SHA256")'
       - uses: actions/upload-artifact@v4
         with:
           name: npm-package

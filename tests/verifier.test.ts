@@ -212,7 +212,7 @@ describe("input validation", () => {
       null,
       [],
       {},
-      { schemaVersion: 2, constraints: [] },
+      { schemaVersion: 3, constraints: [] },
       { schemaVersion: 1, constraints: [], extra: true },
     ]) {
       expect(() => parseManifest(value)).toThrow();

@@ -1,4 +1,9 @@
-import type { Constraint, Handoff, Manifest } from "./contracts.js";
+import type {
+  Constraint,
+  Handoff,
+  Manifest,
+  RuleReference,
+} from "./contracts.js";
 
 export class InputError extends Error {
   override name = "InputError";
@@ -54,7 +59,14 @@ export function timestamp(value: unknown, path: string): number {
 }
 
 function version(value: Record<string, unknown>, path: string) {
-  if (value.schemaVersion !== 1) fail(`${path}.schemaVersion: expected 1`);
+  if (value.schemaVersion !== 1 && value.schemaVersion !== 2)
+    fail(`${path}.schemaVersion: expected 1 or 2`);
+}
+
+function revision(value: unknown, path: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 1)
+    fail(`${path}: expected a positive safe integer`);
+  return value as number;
 }
 
 function unique(values: string[], path: string) {
@@ -85,6 +97,7 @@ export function parseManifest(input: unknown): Manifest {
         "revokedAt",
         "replacedBy",
         "supersededAt",
+        ...(root.schemaVersion === 2 ? ["revision"] : []),
       ],
       path,
     );
@@ -94,6 +107,8 @@ export function parseManifest(input: unknown): Manifest {
       description: string(rule.description, `${path}.description`),
       source: string(rule.source, `${path}.source`),
     };
+    if (root.schemaVersion === 2)
+      parsed.revision = revision(rule.revision, `${path}.revision`);
     for (const field of ["expiresAt", "revokedAt", "supersededAt"] as const) {
       if (Object.hasOwn(rule, field)) {
         timestamp(rule[field], `${path}.${field}`);
@@ -138,16 +153,57 @@ export function parseManifest(input: unknown): Manifest {
     }
     for (const id of path) completed.add(id);
   }
-  return { schemaVersion: 1, constraints };
+  return { schemaVersion: root.schemaVersion as 1 | 2, constraints };
 }
 
 export function parseHandoff(input: unknown): Handoff {
   const root = object(input, "handoff");
-  keys(root, ["schemaVersion", "task", "activeConstraints"], "handoff");
   version(root, "handoff");
+  keys(
+    root,
+    [
+      "schemaVersion",
+      "task",
+      "activeConstraints",
+      ...(root.schemaVersion === 2 ? ["scope", "capturedAt"] : []),
+    ],
+    "handoff",
+  );
   const task = string(root.task, "handoff.task");
   if (!Array.isArray(root.activeConstraints))
     fail("handoff.activeConstraints: expected an array");
+  if (root.schemaVersion === 2) {
+    const scope = identifier(root.scope, "handoff.scope");
+    timestamp(root.capturedAt, "handoff.capturedAt");
+    const activeConstraints: RuleReference[] = root.activeConstraints.map(
+      (entry, index) => {
+        const path = `handoff.activeConstraints[${index}]`;
+        const ref = object(entry, path);
+        keys(ref, ["id", "revision", "contentHash"], path);
+        const contentHash = string(ref.contentHash, `${path}.contentHash`);
+        if (!/^sha256:[a-f0-9]{64}(?![\s\S])/.test(contentHash))
+          fail(
+            `${path}.contentHash: expected sha256 followed by 64 lowercase hex digits`,
+          );
+        return {
+          id: identifier(ref.id, `${path}.id`),
+          revision: revision(ref.revision, `${path}.revision`),
+          contentHash,
+        };
+      },
+    );
+    unique(
+      activeConstraints.map((ref) => ref.id),
+      "handoff.activeConstraints",
+    );
+    return {
+      schemaVersion: 2,
+      task,
+      scope,
+      capturedAt: root.capturedAt as string,
+      activeConstraints,
+    };
+  }
   const activeConstraints = root.activeConstraints.map((id, index) =>
     identifier(id, `handoff.activeConstraints[${index}]`),
   );

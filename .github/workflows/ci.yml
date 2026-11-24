@@ -34,4 +34,16 @@ jobs:
           CONSUMER="$(mktemp -d)"
           cd "$CONSUMER"
           npx --yes --offline --package="$PACKAGE" handoff-check init --scope staging --agent both --ci
-          npx --yes --offline --package="$PACKAGE" handoff-check verify --format json
+          npx --yes --offline --package="$PACKAGE" handoff-check verify --format json --require-content
+          node -e 'require("node:fs").writeFileSync("constraints.json",JSON.stringify({schemaVersion:2,constraints:[{id:"C-01",revision:1,scope:"staging",description:"Review migrations",source:"synthetic:ci"}]}))'
+          npx --yes --offline --package="$PACKAGE" handoff-check snapshot --task "Resume migrations" --output handoff.next.json
+          npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.next.json --require-content --format json
+          node -e 'const fs=require("node:fs"),p=JSON.parse(fs.readFileSync("constraints.json"));p.constraints[0].description="Require two reviewers";fs.writeFileSync("constraints.json",JSON.stringify(p))'
+          if npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.next.json --require-content --format json > changed.json; then
+            echo "Expected same-ID content change to fail"
+            exit 1
+          else
+            VERIFY_EXIT=$?
+            test "$VERIFY_EXIT" -eq 1
+          fi
+          node -e 'const r=require("./changed.json");if(r.findings.length!==1||r.findings[0].code!=="CHANGED")process.exit(1)'

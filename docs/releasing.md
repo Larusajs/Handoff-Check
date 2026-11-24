@@ -1,10 +1,10 @@
 # Releasing
 
 The npm package name is `handoff-check`; the binary is `handoff-check` and the
-initial version is 0.1.0. A registry lookup is not proof that a name can be claimed.
+current version is 0.2.0. A registry lookup is not proof that a name can be claimed.
 Confirm ownership during the authenticated first publication.
 
-## First release
+## Release a reviewed version
 
 1. Merge reviewed changes into main and wait for all Linux/macOS/Windows checks,
    including packed offline npx onboarding, to pass on the merged commit.
@@ -13,14 +13,18 @@ Confirm ownership during the authenticated first publication.
    built tarball as `npm-package`.
 3. Download that tarball, inspect its file list and checksum, and test it in a
    separate consumer directory using offline npx with an absolute tarball path.
-4. Authenticate using `npm login` in the maintainer's own terminal. Never commit or
-   send credentials. Publish the reviewed artifact with
-   `npm publish /absolute/path/handoff-check-0.1.0.tgz --ignore-scripts --access public`.
-   Complete any npm two-factor authentication directly with npm.
+4. Prefer trusted publishing: dispatch the same main commit/version with
+   `publish: true` and the reviewed tarball's SHA256 in the `sha256` input. The
+   workflow refuses publication if the rebuilt artifact differs. Download the
+   publish-run artifact and compare it before claiming artifact continuity.
+   For first-publication bootstrap or an explicitly chosen manual release, use
+   `npm login` and publish the reviewed tarball directly with
+   `npm publish /absolute/path/handoff-check-0.2.0.tgz --ignore-scripts --access public`.
+   Complete interactive two-factor authentication directly with npm.
 5. Verify registry name, version, binary and integrity, then test
-   `npx --yes handoff-check@0.1.0 --version` and fresh-project init/verify using a
+   `npx --yes handoff-check@0.2.0 --version` and fresh-project init/verify using a
    new package cache and the public registry, rather than the local tarball.
-6. Create tag `v0.1.0` and a GitHub release on the reviewed main commit, attach the
+6. Create tag `v0.2.0` and a GitHub release on the reviewed main commit, attach the
    same tarball, and describe features, requirements and known limits.
 
 Publishing is immutable for a given npm name/version. Fix failed candidates on a
