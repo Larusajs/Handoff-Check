@@ -1,0 +1,2 @@
+# Keep checked-out text consistent with EditorConfig and Biome on every OS.
+* text=auto eol=lf
