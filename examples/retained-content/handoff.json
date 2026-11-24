@@ -1,0 +1,20 @@
+{
+  "task": "Review staging migrations",
+  "scope": "staging",
+  "capturedAt": "2026-11-24T10:00:00.000Z",
+  "schemaVersion": 3,
+  "activeConstraints": [
+    {
+      "id": "MIGRATION-REVIEW",
+      "revision": 1,
+      "contentHash": "sha256:3639b7d8f89fd4efc202dc6c396aea295247b167e0c4d55d2dde7b98a5239f89",
+      "content": {
+        "id": "MIGRATION-REVIEW",
+        "scope": "staging",
+        "description": "Require review before applying staging migrations",
+        "source": "synthetic:migration-policy",
+        "revision": 1
+      }
+    }
+  ]
+}

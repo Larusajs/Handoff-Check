@@ -6,19 +6,25 @@ import metadata from "../package.json" with { type: "json" };
 import { loadConfig, readJson } from "./config.js";
 import { initialize } from "./initialize.js";
 import {
+  explanationText,
+  terminalText,
+  verificationMarkdown,
+} from "./render.js";
+import {
   InputError,
   identifier,
   parseHandoff,
   parseManifest,
   timestamp,
 } from "./validation.js";
-import { snapshot, verify } from "./verifier.js";
+import { explain, snapshot, verify } from "./verifier.js";
 
 const help = `Handoff Check
 
 Usage: handoff-check verify --scope <scope> [options]
        handoff-check init --scope <scope> [--agent both] [--dry-run] [--ci]
        handoff-check snapshot --task <task> [--output <new-file>] [options]
+       handoff-check explain --scope <scope> [options]
 
 Options:
   --constraints <path>  Manifest file (default: constraints.json)
@@ -26,35 +32,20 @@ Options:
   --scope <scope>       Selected scope, including global constraints
   --config <path>       Project config (default: cwd/.handoff-check.json)
   --as-of <UTC time>    Fixed evaluation time (default: current time)
-  --require-content    verify: require a v2 content-aware handoff
+  --require-content    verify: require a v2/v3 content-aware handoff
   --require-active     verify: fail if no constraints apply to scope/time
   --task <task>        snapshot: task description (required)
   --output <path>      snapshot: create a new baseline file, never overwrite
-  --format text|json   Output format (default: text)
+  --include-content    snapshot: retain old rule text in a v3 handoff (opt-in)
+  --format text|json|markdown  Markdown is verify/explain-only (default: text)
   --agent <agent>      init: codex, claude, both (default), or none
   --dry-run            init: preview files and instruction changes without writes
   --ci                 init: also create a pinned GitHub Actions check
   --version            Show package version
   --help               Show this help
 
-Exit codes: 0 verified, 1 rule/policy mismatch, 2 invalid input
+Exit codes: 0 verified/explained/captured/initialized, 1 rule/policy mismatch, 2 invalid input
 `;
-
-// Keep each diagnostic on one terminal line and render control bytes visibly.
-function terminalText(value: string): string {
-  return Array.from(value, (character) => {
-    const code = character.charCodeAt(0);
-    if (
-      code < 0x20 ||
-      (code >= 0x7f && code <= 0x9f) ||
-      code === 0x2028 ||
-      code === 0x2029
-    ) {
-      return `\\u${code.toString(16).padStart(4, "0")}`;
-    }
-    return character;
-  }).join("");
-}
 
 async function main(): Promise<number> {
   let format = "text";
@@ -77,13 +68,14 @@ async function main(): Promise<number> {
         ci: { type: "boolean" },
         "require-content": { type: "boolean" },
         "require-active": { type: "boolean" },
+        "include-content": { type: "boolean" },
         task: { type: "string" },
         output: { type: "string" },
       },
     });
     format = values.format;
-    if (format !== "text" && format !== "json")
-      throw new InputError("--format: expected text or json");
+    if (!["text", "json", "markdown"].includes(format))
+      throw new InputError("--format: expected text, json or markdown");
     if (values.help) {
       process.stdout.write(help);
       return 0;
@@ -94,12 +86,32 @@ async function main(): Promise<number> {
     }
     if (
       positionals.length !== 1 ||
-      !["verify", "init", "snapshot"].includes(positionals[0] ?? "")
+      !["verify", "init", "snapshot", "explain"].includes(positionals[0] ?? "")
     )
       throw new InputError(
-        "Expected command: verify, snapshot or init (use --help for usage)",
+        "Expected command: verify, snapshot, explain or init (use --help for usage)",
       );
     const cwd = process.cwd();
+    const command = positionals[0];
+    if (format === "markdown" && command !== "verify" && command !== "explain")
+      throw new InputError(
+        "--format markdown is only supported by verify and explain",
+      );
+    if (values["include-content"] !== undefined && command !== "snapshot")
+      throw new InputError("--include-content is only supported by snapshot");
+    if (
+      command === "explain" &&
+      [
+        values.handoff,
+        values.task,
+        values.output,
+        values["require-content"],
+        values["require-active"],
+      ].some((value) => value !== undefined)
+    )
+      throw new InputError(
+        "--handoff, --task, --output and --require-* are not supported by explain",
+      );
     if (positionals[0] === "init") {
       for (const key of [
         "constraints",
@@ -163,6 +175,15 @@ async function main(): Promise<number> {
           : resolve(directory, config.constraints ?? "constraints.json"),
       ),
     );
+    if (command === "explain") {
+      const result = explain(manifest, scope, asOf);
+      process.stdout.write(
+        format === "json"
+          ? `${JSON.stringify(result, null, 2)}\n`
+          : explanationText(result, format === "markdown"),
+      );
+      return 0;
+    }
     if (positionals[0] === "snapshot") {
       if (
         values.handoff !== undefined ||
@@ -174,7 +195,9 @@ async function main(): Promise<number> {
         );
       if (values.task === undefined)
         throw new InputError("snapshot requires --task");
-      const captured = snapshot(manifest, values.task, scope, asOf);
+      const captured = snapshot(manifest, values.task, scope, asOf, {
+        includeContent: values["include-content"] ?? false,
+      });
       const content = `${JSON.stringify(captured, null, 2)}\n`;
       if (values.output === undefined) process.stdout.write(content);
       else {
@@ -219,20 +242,40 @@ async function main(): Promise<number> {
           : resolve(directory, config.handoff ?? "handoff.json"),
       ),
     );
-    if (values["require-content"] && handoff.schemaVersion !== 2)
+    if (values["require-content"] && handoff.schemaVersion === 1)
       throw new InputError(
-        "Content tracking requires a schemaVersion 2 handoff; review current rules and capture a snapshot before resuming",
+        "Content tracking requires a schemaVersion 2 or 3 handoff; review current rules and capture a snapshot before resuming",
       );
     const result = verify(manifest, handoff, scope, asOf, {
       requireActive: values["require-active"] ?? false,
     });
     if (format === "json") {
       process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    } else if (format === "markdown") {
+      process.stdout.write(
+        verificationMarkdown(
+          result,
+          handoff,
+          values["require-active"] ?? false,
+          values["require-content"] ?? false,
+        ),
+      );
     } else {
       for (const finding of result.findings) {
         process.stdout.write(
           `${finding.code.padEnd(12)} ${finding.id === undefined ? "" : `${finding.id}  `}${terminalText(finding.message)}\n`,
         );
+        if (finding.code === "CHANGED") {
+          if (finding.changes)
+            for (const change of finding.changes)
+              process.stdout.write(
+                `  ${change.field}: ${terminalText(JSON.stringify(change.before))} -> ${terminalText(JSON.stringify(change.after))}\n`,
+              );
+          else
+            process.stdout.write(
+              "  Previous content unavailable: baseline stores hashes only\n",
+            );
+        }
       }
       const count = result.expectedConstraints.length;
       const label =

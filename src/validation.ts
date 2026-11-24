@@ -1,3 +1,4 @@
+import { reference } from "./content.js";
 import type {
   Constraint,
   Handoff,
@@ -58,9 +59,19 @@ export function timestamp(value: unknown, path: string): number {
   return millis;
 }
 
-function version(value: Record<string, unknown>, path: string) {
-  if (value.schemaVersion !== 1 && value.schemaVersion !== 2)
-    fail(`${path}.schemaVersion: expected 1 or 2`);
+function version(
+  value: Record<string, unknown>,
+  path: string,
+  retained = false,
+) {
+  if (
+    value.schemaVersion !== 1 &&
+    value.schemaVersion !== 2 &&
+    !(retained && value.schemaVersion === 3)
+  )
+    fail(
+      `${path}.schemaVersion: expected ${retained ? "1, 2 or 3" : "1 or 2"}`,
+    );
 }
 
 function revision(value: unknown, path: string): number {
@@ -77,6 +88,54 @@ function unique(values: string[], path: string) {
   }
 }
 
+function parseConstraint(
+  input: unknown,
+  path: string,
+  revisioned: boolean,
+): Constraint {
+  const rule = object(input, path);
+  keys(
+    rule,
+    [
+      "id",
+      "scope",
+      "description",
+      "source",
+      "expiresAt",
+      "revokedAt",
+      "replacedBy",
+      "supersededAt",
+      ...(revisioned ? ["revision"] : []),
+    ],
+    path,
+  );
+  const parsed: Constraint = {
+    id: identifier(rule.id, `${path}.id`),
+    scope: identifier(rule.scope, `${path}.scope`),
+    description: string(rule.description, `${path}.description`),
+    source: string(rule.source, `${path}.source`),
+  };
+  if (revisioned) parsed.revision = revision(rule.revision, `${path}.revision`);
+  for (const field of ["expiresAt", "revokedAt", "supersededAt"] as const) {
+    if (Object.hasOwn(rule, field)) {
+      timestamp(rule[field], `${path}.${field}`);
+      parsed[field] = rule[field] as string;
+    }
+  }
+  if (Object.hasOwn(rule, "replacedBy")) {
+    parsed.replacedBy = identifier(rule.replacedBy, `${path}.replacedBy`);
+  }
+  if (
+    (parsed.replacedBy === undefined) !==
+    (parsed.supersededAt === undefined)
+  ) {
+    fail(`${path}: replacedBy and supersededAt must be provided together`);
+  }
+  if (parsed.replacedBy === parsed.id)
+    fail(`${path}: a rule cannot replace itself`);
+  return parsed;
+}
+
 export function parseManifest(input: unknown): Manifest {
   const root = object(input, "manifest");
   keys(root, ["schemaVersion", "constraints"], "manifest");
@@ -84,47 +143,11 @@ export function parseManifest(input: unknown): Manifest {
   if (!Array.isArray(root.constraints))
     fail("manifest.constraints: expected an array");
   const constraints: Constraint[] = root.constraints.map((entry, index) => {
-    const path = `manifest.constraints[${index}]`;
-    const rule = object(entry, path);
-    keys(
-      rule,
-      [
-        "id",
-        "scope",
-        "description",
-        "source",
-        "expiresAt",
-        "revokedAt",
-        "replacedBy",
-        "supersededAt",
-        ...(root.schemaVersion === 2 ? ["revision"] : []),
-      ],
-      path,
+    return parseConstraint(
+      entry,
+      `manifest.constraints[${index}]`,
+      root.schemaVersion === 2,
     );
-    const parsed: Constraint = {
-      id: identifier(rule.id, `${path}.id`),
-      scope: identifier(rule.scope, `${path}.scope`),
-      description: string(rule.description, `${path}.description`),
-      source: string(rule.source, `${path}.source`),
-    };
-    if (root.schemaVersion === 2)
-      parsed.revision = revision(rule.revision, `${path}.revision`);
-    for (const field of ["expiresAt", "revokedAt", "supersededAt"] as const) {
-      if (Object.hasOwn(rule, field)) {
-        timestamp(rule[field], `${path}.${field}`);
-        parsed[field] = rule[field] as string;
-      }
-    }
-    if (Object.hasOwn(rule, "replacedBy")) {
-      parsed.replacedBy = identifier(rule.replacedBy, `${path}.replacedBy`);
-    }
-    if (
-      (parsed.replacedBy === undefined) !==
-      (parsed.supersededAt === undefined)
-    ) {
-      fail(`${path}: replacedBy and supersededAt must be provided together`);
-    }
-    return parsed;
   });
   unique(
     constraints.map((rule) => rule.id),
@@ -158,38 +181,64 @@ export function parseManifest(input: unknown): Manifest {
 
 export function parseHandoff(input: unknown): Handoff {
   const root = object(input, "handoff");
-  version(root, "handoff");
+  version(root, "handoff", true);
   keys(
     root,
     [
       "schemaVersion",
       "task",
       "activeConstraints",
-      ...(root.schemaVersion === 2 ? ["scope", "capturedAt"] : []),
+      ...(root.schemaVersion !== 1 ? ["scope", "capturedAt"] : []),
     ],
     "handoff",
   );
   const task = string(root.task, "handoff.task");
   if (!Array.isArray(root.activeConstraints))
     fail("handoff.activeConstraints: expected an array");
-  if (root.schemaVersion === 2) {
+  if (root.schemaVersion !== 1) {
     const scope = identifier(root.scope, "handoff.scope");
     timestamp(root.capturedAt, "handoff.capturedAt");
     const activeConstraints: RuleReference[] = root.activeConstraints.map(
       (entry, index) => {
         const path = `handoff.activeConstraints[${index}]`;
         const ref = object(entry, path);
-        keys(ref, ["id", "revision", "contentHash"], path);
+        keys(
+          ref,
+          [
+            "id",
+            "revision",
+            "contentHash",
+            ...(root.schemaVersion === 3 ? ["content"] : []),
+          ],
+          path,
+        );
         const contentHash = string(ref.contentHash, `${path}.contentHash`);
         if (!/^sha256:[a-f0-9]{64}(?![\s\S])/.test(contentHash))
           fail(
             `${path}.contentHash: expected sha256 followed by 64 lowercase hex digits`,
           );
-        return {
+        const parsed = {
           id: identifier(ref.id, `${path}.id`),
           revision: revision(ref.revision, `${path}.revision`),
           contentHash,
         };
+        if (root.schemaVersion === 3) {
+          const content = parseConstraint(ref.content, `${path}.content`, true);
+          const expected = reference(content);
+          if (
+            expected.id !== parsed.id ||
+            expected.revision !== parsed.revision ||
+            expected.contentHash !== parsed.contentHash
+          )
+            fail(
+              `${path}.content: id, revision and canonical hash must match the reference`,
+            );
+          return {
+            ...parsed,
+            content: content as Constraint & { revision: number },
+          };
+        }
+        return parsed;
       },
     );
     unique(
@@ -197,12 +246,12 @@ export function parseHandoff(input: unknown): Handoff {
       "handoff.activeConstraints",
     );
     return {
-      schemaVersion: 2,
+      schemaVersion: root.schemaVersion,
       task,
       scope,
       capturedAt: root.capturedAt as string,
       activeConstraints,
-    };
+    } as Handoff;
   }
   const activeConstraints = root.activeConstraints.map((id, index) =>
     identifier(id, `handoff.activeConstraints[${index}]`),
