@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Show the expected active-rule count in every text verification summary.
+- Mark valid zero-rule checks as PASS (EMPTY), with an explicit scope/time notice.
+- Add activeConstraintCount to v2 JSON while preserving legacy default JSON shape.
+- Add opt-in --require-active with a global NO_ACTIVE_CONSTRAINTS finding and exit 1.
+
 ## 0.2.0
 
 - Detect same-ID rule edits through revision and canonical SHA-256 references.

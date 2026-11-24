@@ -9,8 +9,8 @@ infers rules from a summary.
 After the npm release is published, from the consuming repository root:
 
 ```sh
-npx handoff-check@0.2.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.2.0 init --scope staging --agent both
+npx handoff-check@0.3.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.3.0 init --scope staging --agent both
 ```
 
 Choose `codex`, `claude`, `both` (default), or `none`. Generated integrations:
@@ -38,8 +38,8 @@ npm pack
 From a separate consuming project, substitute the actual absolute tarball path:
 
 ```sh
-npx --offline --yes --package=/absolute/path/handoff-check-0.2.0.tgz handoff-check init --scope staging --agent both
-npx --offline --yes --package=/absolute/path/handoff-check-0.2.0.tgz handoff-check verify --format json --require-content
+npx --offline --yes --package=/absolute/path/handoff-check-0.3.0.tgz handoff-check init --scope staging --agent both
+npx --offline --yes --package=/absolute/path/handoff-check-0.3.0.tgz handoff-check verify --format json --require-content
 ```
 
 Bun is not required for these consumer commands. Generated agent commands use the
@@ -77,6 +77,13 @@ not every agent turn. Host-specific hooks are a future integration because host
 events and context-reset behavior differ.
 
 ## Upgrades and contributor instructions
+
+In 0.3, verification reports how many selected/global rules are active. V2 JSON
+includes activeConstraintCount. Empty checks remain valid by default but text
+clearly says PASS (EMPTY). Agents must not present this as real policy coverage.
+Teams can explicitly add --require-active to verify/CI after authoring rules;
+zero then exits 1 with a global NO_ACTIVE_CONSTRAINTS finding. New starter CI does
+not enable this policy automatically. V1 default JSON remains unchanged.
 
 Matching integrations are preserved on repeated init. If a skill or managed block
 differs, compare it to the new package and review/update explicitly; there is no

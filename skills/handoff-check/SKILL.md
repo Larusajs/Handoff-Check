@@ -46,6 +46,14 @@ report. Keep ordinary task summaries separate from the declared constraint IDs.
 
 ## Content-aware handoffs
 
+Report the active-rule count as well as findings. V2 JSON exposes
+`activeConstraintCount`; legacy JSON exposes `expectedConstraints.length`.
+A zero count is not evidence that real active rules were checked. It may mean a
+starter, another scope, or only inactive rules. Text marks this as PASS (EMPTY)
+when there are no mismatches. If the project explicitly requires a nonempty set,
+add `--require-active`: zero then produces global NO_ACTIVE_CONSTRAINTS and exit 1.
+Do not enable this policy silently or invent rules to satisfy it.
+
 Use schemaVersion 2 handoffs with revision/hash references. `CHANGED` means a
 carried active rule has a different revision or content hash; it does not supply
 a text diff or prove which state was authorized. Report expected/reported values

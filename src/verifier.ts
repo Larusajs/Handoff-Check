@@ -3,9 +3,9 @@ import type {
   Constraint,
   ContentHandoff,
   Finding,
-  FindingCode,
   Handoff,
   Manifest,
+  RuleFindingCode,
   VerificationResult,
 } from "./contracts.js";
 import { InputError, identifier, timestamp } from "./validation.js";
@@ -19,7 +19,7 @@ function inactive(
   rule: Constraint,
   scope: string,
   time: number,
-): FindingCode | undefined {
+): RuleFindingCode | undefined {
   if (rule.scope !== "global" && rule.scope !== scope) return "OUT_OF_SCOPE";
   if (rule.revokedAt !== undefined && time >= Date.parse(rule.revokedAt))
     return "REVOKED";
@@ -36,6 +36,7 @@ export function verify(
   handoff: Handoff,
   scope: string,
   asOf: string,
+  options: { requireActive?: boolean } = {},
 ): VerificationResult {
   identifier(scope, "scope");
   if (handoff.schemaVersion === 2 && handoff.scope !== scope)
@@ -103,10 +104,24 @@ export function verify(
       }
     }
   }
-  findings.sort((a, b) => compare(a.id, b.id) || compare(a.code, b.code));
+  if (options.requireActive && expectedConstraints.length === 0) {
+    findings.push({
+      code: "NO_ACTIVE_CONSTRAINTS",
+      message:
+        "No active constraints apply to the selected scope and time; --require-active requires at least one",
+    });
+  }
+  findings.sort(
+    (a, b) => compare(a.id ?? "", b.id ?? "") || compare(a.code, b.code),
+  );
   return {
     schemaVersion: handoff.schemaVersion,
-    ...(handoff.schemaVersion === 2 ? { tracking: "content" as const } : {}),
+    ...(handoff.schemaVersion === 2
+      ? {
+          tracking: "content" as const,
+          activeConstraintCount: expectedConstraints.length,
+        }
+      : {}),
     status: findings.length ? "mismatch" : "verified",
     scope,
     asOf: new Date(time).toISOString(),

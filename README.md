@@ -3,7 +3,7 @@
 A deterministic, local CLI that verifies active constraints before a coding agent
 resumes work.
 
-**Version: 0.2.0.**
+**Version: 0.3.0.**
 
 A task summary may preserve the goal while losing an active rule, carrying an
 expired restriction, or moving a staging-only instruction into production.
@@ -18,8 +18,8 @@ Source references are review metadata and are never fetched.
 Once the npm package is published, run in the repository where your agent works:
 
 ```sh
-npx handoff-check@0.2.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.2.0 init --scope staging --agent both
+npx handoff-check@0.3.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.3.0 init --scope staging --agent both
 ```
 
 This creates `.handoff-check.json`, starter `constraints.json` and `handoff.json`,
@@ -33,7 +33,7 @@ on verification. Revisions and hashes detect edits under an unchanged rule ID.
 Ask a resuming agent to use the installed skill, or run:
 
 ```sh
-npx handoff-check@0.2.0 verify --format json --require-content
+npx handoff-check@0.3.0 verify --format json --require-content
 ```
 
 The saved config supplies paths and scope. `init --ci` also creates a pinned GitHub
@@ -43,15 +43,45 @@ Neither checks whether the agent obeys a rule's meaning.
 
 Until publication, use a local package via the [setup guide](docs/agent-integration.md).
 Node.js 22+ is required; end users do not need Bun. After publication, global
-installation is also available: `npm install --global handoff-check@0.2.0`.
+installation is also available: `npm install --global handoff-check@0.3.0`.
+
+## See how many rules were checked
+
+Every text summary includes the expected active-rule count:
+
+```text
+PASS  7 active constraints checked | 0 findings | scope staging | ...
+PASS (EMPTY)  0 active constraints checked | 0 findings | ... | No active constraints apply to this scope and time
+```
+
+This counts active selected/global rules, not reported IDs or total manifest
+entries. Missing active rules count too. Zero may mean a starter, another scope,
+or inactive rules; it does not prove the manifest is empty. Empty checks exit 0 by
+default but are explicitly marked. Unexpected reported IDs still fail.
+
+To require actual active rules, opt in:
+
+```sh
+npx handoff-check@0.3.0 verify --require-content --require-active --format json
+```
+
+A zero active set produces global NO_ACTIVE_CONSTRAINTS (no fake ID), mismatch
+status and exit 1. Other findings remain. Invalid inputs still exit 2. V2 JSON
+includes activeConstraintCount; legacy default JSON exposes the expected set in
+expectedConstraints without changing its fields.
+
+The policy is not automatically enabled in starter CI. After adding real rules,
+append --require-active to the generated workflow command. It is verify-only;
+init and snapshot reject it. See the
+[empty verification contract](docs/decisions/0003-empty-verification.md).
 
 ## Catch rule edits between sessions
 
 After reviewing rules at handoff creation, capture a new baseline:
 
 ```sh
-npx handoff-check@0.2.0 snapshot --task "Resume migration review" --output handoff.next.json
-npx handoff-check@0.2.0 verify --handoff handoff.next.json --require-content --format json
+npx handoff-check@0.3.0 snapshot --task "Resume migration review" --output handoff.next.json
+npx handoff-check@0.3.0 verify --handoff handoff.next.json --require-content --format json
 ```
 
 Snapshot creates a new file exclusively. Review it before deliberately replacing
@@ -86,7 +116,7 @@ or revisioned v2 manifests. Scope must match the v2 handoff's saved scope.
 Review current rules, capture a new v2 baseline, and deliberately update the saved
 handoff. Existing inputs are preserved by init, not silently upgraded. Review
 installed skills, instruction blocks and CI commands to update their pinned
-version to 0.2.0 and add `--require-content`. Init refuses to overwrite differing
+version to 0.3.0 and add `--require-content`. Init refuses to overwrite differing
 integrations; compare them with the new packaged templates and update reviewed
 copies explicitly. Never refresh before checking resumed work or reuse capturedAt
 as the clock for real resumed work.
@@ -146,7 +176,7 @@ The synthetic Friday freeze has expired and the migration review rule is missing
 ```text
 EXPIRED      C-02  Remove expired constraint: Staging freeze ended Friday at 18:00 UTC
 MISSING      C-07  Include active constraint: Require review before applying migrations
-FAIL  2 findings | scope staging | as of 2026-11-23T09:00:00.000Z
+FAIL  1 active constraints checked | 2 findings | scope staging | as of 2026-11-23T09:00:00.000Z | IDs only; content changes not checked
 ```
 
 This command intentionally exits with code 1. Use the corrected handoff to pass:
@@ -156,7 +186,7 @@ bun run dev verify --constraints examples/stale-handoff/constraints.json --hando
 ```
 
 ```text
-PASS  0 findings | scope staging | as of 2026-11-23T09:00:00.000Z
+PASS  1 active constraints checked | 0 findings | scope staging | as of 2026-11-23T09:00:00.000Z | IDs only; content changes not checked
 ```
 
 For the built CLI, run `bun run build`, then replace `bun run dev` with
@@ -225,7 +255,7 @@ include global rules even when no scope-specific rules exist.
 | 1         | Rule mismatch; inspect findings                            |
 | 2         | Invalid arguments, invalid input, or unreadable input file |
 
-Findings include `MISSING`, `EXPIRED`, `REVOKED`, `SUPERSEDED`, `OUT_OF_SCOPE`,
+Per-rule findings include `MISSING`, `EXPIRED`, `REVOKED`, `SUPERSEDED`, `OUT_OF_SCOPE`,
 `UNKNOWN`, and (for v2) `CHANGED`, ordered by ID. A reported ID receives one primary finding according to
 the precedence in the lifecycle ADR.
 
