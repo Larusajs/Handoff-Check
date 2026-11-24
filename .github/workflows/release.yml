@@ -1,0 +1,52 @@
+name: Release package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact reviewed package version on main
+        required: true
+        default: 0.1.0
+      publish:
+        description: Publish to npm using the configured trusted publisher
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+  release:
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check requested version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: node -e 'if (JSON.parse(require("node:fs").readFileSync("package.json")).version !== process.env.RELEASE_VERSION) process.exit(1)'
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: npm pack --ignore-scripts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: handoff-check-*.tgz
+      - name: Publish reviewed package
+        if: inputs.publish
+        run: |
+          node -e 'const v=require("node:child_process").execFileSync("npm",["--version"],{encoding:"utf8"}).trim().split(".").map(Number);if(v[0]<11||(v[0]===11&&(v[1]<5||(v[1]===5&&v[2]<1))))throw new Error("npm 11.5.1+ required for trusted publishing")'
+          npm publish handoff-check-*.tgz --ignore-scripts --access public

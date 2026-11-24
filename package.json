@@ -1,5 +1,5 @@
 {
-  "name": "@larusajs/handoff-check",
+  "name": "handoff-check",
   "version": "0.1.0",
   "description": "A deterministic, local CLI that verifies active constraints before a coding agent resumes work.",
   "type": "module",
