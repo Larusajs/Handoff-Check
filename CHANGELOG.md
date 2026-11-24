@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
 - Establish English contributor and coding-agent guidance and project policies.
 - Add versioned local manifest and handoff contracts with strict validation.

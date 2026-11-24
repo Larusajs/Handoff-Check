@@ -3,7 +3,7 @@
 A deterministic, local CLI that verifies active constraints before a coding agent
 resumes work.
 
-**Status: 0.1.0 release candidate. Public npm publication is pending.**
+**Version: 0.1.0.**
 
 A task summary may preserve the goal while losing an active rule, carrying an
 expired restriction, or moving a staging-only instruction into production.
@@ -113,7 +113,8 @@ PASS  0 findings | scope staging | as of 2026-11-23T09:00:00.000Z
 ```
 
 For the built CLI, run `bun run build`, then replace `bun run dev` with
-`node dist/cli.js`. Installation from a package registry is not available yet.
+`node dist/cli.js`. If registry installation is unavailable, use a local source
+build or tarball.
 
 ## Input contracts
 
