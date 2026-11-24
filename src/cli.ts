@@ -27,6 +27,7 @@ Options:
   --config <path>       Project config (default: cwd/.handoff-check.json)
   --as-of <UTC time>    Fixed evaluation time (default: current time)
   --require-content    verify: require a v2 content-aware handoff
+  --require-active     verify: fail if no constraints apply to scope/time
   --task <task>        snapshot: task description (required)
   --output <path>      snapshot: create a new baseline file, never overwrite
   --format text|json   Output format (default: text)
@@ -36,7 +37,7 @@ Options:
   --version            Show package version
   --help               Show this help
 
-Exit codes: 0 verified, 1 rule mismatch, 2 invalid input
+Exit codes: 0 verified, 1 rule/policy mismatch, 2 invalid input
 `;
 
 // Keep each diagnostic on one terminal line and render control bytes visibly.
@@ -75,6 +76,7 @@ async function main(): Promise<number> {
         "dry-run": { type: "boolean" },
         ci: { type: "boolean" },
         "require-content": { type: "boolean" },
+        "require-active": { type: "boolean" },
         task: { type: "string" },
         output: { type: "string" },
       },
@@ -105,6 +107,7 @@ async function main(): Promise<number> {
         "config",
         "as-of",
         "require-content",
+        "require-active",
         "task",
         "output",
       ] as const)
@@ -163,10 +166,11 @@ async function main(): Promise<number> {
     if (positionals[0] === "snapshot") {
       if (
         values.handoff !== undefined ||
-        values["require-content"] !== undefined
+        values["require-content"] !== undefined ||
+        values["require-active"] !== undefined
       )
         throw new InputError(
-          "--handoff and --require-content are only supported by verify",
+          "--handoff, --require-content and --require-active are only supported by verify",
         );
       if (values.task === undefined)
         throw new InputError("snapshot requires --task");
@@ -219,17 +223,26 @@ async function main(): Promise<number> {
       throw new InputError(
         "Content tracking requires a schemaVersion 2 handoff; review current rules and capture a snapshot before resuming",
       );
-    const result = verify(manifest, handoff, scope, asOf);
+    const result = verify(manifest, handoff, scope, asOf, {
+      requireActive: values["require-active"] ?? false,
+    });
     if (format === "json") {
       process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     } else {
       for (const finding of result.findings) {
         process.stdout.write(
-          `${finding.code.padEnd(12)} ${finding.id}  ${terminalText(finding.message)}\n`,
+          `${finding.code.padEnd(12)} ${finding.id === undefined ? "" : `${finding.id}  `}${terminalText(finding.message)}\n`,
         );
       }
+      const count = result.expectedConstraints.length;
+      const label =
+        result.status === "verified"
+          ? count === 0
+            ? "PASS (EMPTY)"
+            : "PASS"
+          : "FAIL";
       process.stdout.write(
-        `${result.status === "verified" ? "PASS" : "FAIL"}  ${result.findings.length} findings | scope ${scope} | as of ${result.asOf}${handoff.schemaVersion === 1 ? " | IDs only; content changes not checked" : " | content tracked"}\n`,
+        `${label}  ${count} active constraints checked | ${result.findings.length} findings | scope ${scope} | as of ${result.asOf}${handoff.schemaVersion === 1 ? " | IDs only; content changes not checked" : " | content tracked"}${count === 0 ? " | No active constraints apply to this scope and time" : ""}\n`,
       );
     }
     return result.status === "verified" ? 0 : 1;

@@ -37,7 +37,7 @@ export interface ContentHandoff {
 
 export type Handoff = LegacyHandoff | ContentHandoff;
 
-export type FindingCode =
+export type RuleFindingCode =
   | "MISSING"
   | "EXPIRED"
   | "REVOKED"
@@ -46,17 +46,30 @@ export type FindingCode =
   | "UNKNOWN"
   | "CHANGED";
 
-export interface Finding {
-  code: FindingCode;
+export type FindingCode = RuleFindingCode | "NO_ACTIVE_CONSTRAINTS";
+
+export interface RuleFinding {
+  code: RuleFindingCode;
   id: string;
   message: string;
   expected?: { revision: number; contentHash: string };
   reported?: { revision: number; contentHash: string };
 }
 
+export interface EmptyPolicyFinding {
+  code: "NO_ACTIVE_CONSTRAINTS";
+  message: string;
+  id?: never;
+  expected?: never;
+  reported?: never;
+}
+
+export type Finding = RuleFinding | EmptyPolicyFinding;
+
 export interface VerificationResult {
   schemaVersion: 1 | 2;
   tracking?: "content";
+  activeConstraintCount?: number;
   status: "verified" | "mismatch";
   scope: string;
   asOf: string;
