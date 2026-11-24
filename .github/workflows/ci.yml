@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -25,3 +26,12 @@ jobs:
       - run: bun run check
       - name: Verify built Node.js CLI
         run: node dist/cli.js verify --constraints examples/stale-handoff/constraints.json --handoff examples/stale-handoff/corrected-handoff.json --scope staging --as-of 2026-11-23T09:00:00Z --format json
+      - name: Verify packed end-user onboarding
+        shell: bash
+        run: |
+          npm pack --ignore-scripts
+          PACKAGE="$(pwd)/handoff-check-$(node -p 'require("./package.json").version').tgz"
+          CONSUMER="$(mktemp -d)"
+          cd "$CONSUMER"
+          npx --yes --offline --package="$PACKAGE" handoff-check init --scope staging --agent both --ci
+          npx --yes --offline --package="$PACKAGE" handoff-check verify --format json
