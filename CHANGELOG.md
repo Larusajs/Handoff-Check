@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1
+
+- Replace obsolete pre-publication onboarding instructions with registry usage.
+- Document all commands, verification policies, and rule/policy exit semantics.
+- Add a reproducible first-rule walkthrough with a passing snapshot and CHANGED failure.
+- Record the research-backed development plan with priorities and acceptance gates.
+- Keep verifier behavior and input/output contracts unchanged.
+
 ## 0.3.0
 
 - Show the expected active-rule count in every text verification summary.

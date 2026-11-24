@@ -1,5 +1,12 @@
 # Roadmap
 
+See the [development plan](development-plan.md) for research evidence, proposed
+0.4–0.6 milestones, dependencies, pilot validation, and acceptance criteria.
+These are proposed milestones, not implemented features or promised dates.
+
+0.3.1 improves published-package onboarding and CLI reference accuracy, and adds
+a [first-rule walkthrough](first-check.md). Verifier behavior is unchanged.
+
 ## Implemented in the initial MVP
 
 - Versioned manifest and handoff contracts, with strict local validation.

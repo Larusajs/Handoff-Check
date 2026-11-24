@@ -6,11 +6,11 @@ infers rules from a summary.
 
 ## Registry installation
 
-After the npm release is published, from the consuming repository root:
+From the consuming repository root:
 
 ```sh
-npx handoff-check@0.3.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.3.0 init --scope staging --agent both
+npx handoff-check@0.3.1 init --scope staging --agent both --dry-run
+npx handoff-check@0.3.1 init --scope staging --agent both
 ```
 
 Choose `codex`, `claude`, `both` (default), or `none`. Generated integrations:
@@ -23,9 +23,10 @@ Choose `codex`, `claude`, `both` (default), or `none`. Generated integrations:
 Review and commit generated files. `--dry-run` previews all changes. Existing valid
 inputs and surrounding instruction text are preserved; conflicts fail before
 writes. Starters have zero rules: author reviewed constraints and populate handoff
-IDs before relying on verification.
+references through a reviewed snapshot before relying on verification. Follow
+[your first real check](first-check.md) for a complete example.
 
-## Local package before publication
+## Local contributor package
 
 From this source checkout, with Bun installed:
 
@@ -38,12 +39,12 @@ npm pack
 From a separate consuming project, substitute the actual absolute tarball path:
 
 ```sh
-npx --offline --yes --package=/absolute/path/handoff-check-0.3.0.tgz handoff-check init --scope staging --agent both
-npx --offline --yes --package=/absolute/path/handoff-check-0.3.0.tgz handoff-check verify --format json --require-content
+npx --offline --yes --package=/absolute/path/handoff-check-0.3.1.tgz handoff-check init --scope staging --agent both
+npx --offline --yes --package=/absolute/path/handoff-check-0.3.1.tgz handoff-check verify --format json --require-content
 ```
 
 Bun is not required for these consumer commands. Generated agent commands use the
-pinned registry package. Before publication, use the same tarball invocation or
+pinned registry package. To test an unpublished contributor build, use the same tarball invocation or
 `node /absolute/path/Handoff-Check/dist/cli.js` in your local agent test prompt.
 A local tarball does not make its npm name available in the public registry.
 

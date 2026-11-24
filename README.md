@@ -3,7 +3,7 @@
 A deterministic, local CLI that verifies active constraints before a coding agent
 resumes work.
 
-**Version: 0.3.0.**
+**Version: 0.3.1.**
 
 A task summary may preserve the goal while losing an active rule, carrying an
 expired restriction, or moving a staging-only instruction into production.
@@ -15,11 +15,11 @@ Source references are review metadata and are never fetched.
 
 ## Quick start
 
-Once the npm package is published, run in the repository where your agent works:
+Run in the repository where your agent works:
 
 ```sh
-npx handoff-check@0.3.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.3.0 init --scope staging --agent both
+npx handoff-check@0.3.1 init --scope staging --agent both --dry-run
+npx handoff-check@0.3.1 init --scope staging --agent both
 ```
 
 This creates `.handoff-check.json`, starter `constraints.json` and `handoff.json`,
@@ -33,7 +33,7 @@ on verification. Revisions and hashes detect edits under an unchanged rule ID.
 Ask a resuming agent to use the installed skill, or run:
 
 ```sh
-npx handoff-check@0.3.0 verify --format json --require-content
+npx handoff-check@0.3.1 verify --format json --require-content
 ```
 
 The saved config supplies paths and scope. `init --ci` also creates a pinned GitHub
@@ -41,9 +41,12 @@ Actions verification workflow. Skill/instruction installation does not guarantee
 agent execution; CI enforces the declared-ID comparison when its workflow runs.
 Neither checks whether the agent obeys a rule's meaning.
 
-Until publication, use a local package via the [setup guide](docs/agent-integration.md).
-Node.js 22+ is required; end users do not need Bun. After publication, global
-installation is also available: `npm install --global handoff-check@0.3.0`.
+Node.js 22+ is required; end users do not need Bun. Global installation is also
+available: `npm install --global handoff-check@0.3.1`. For contributor builds or
+offline package testing, see the [setup guide](docs/agent-integration.md).
+
+For a complete first-rule walkthrough, including a passing baseline and a detected
+edit, see [your first real check](docs/first-check.md).
 
 ## See how many rules were checked
 
@@ -62,7 +65,7 @@ default but are explicitly marked. Unexpected reported IDs still fail.
 To require actual active rules, opt in:
 
 ```sh
-npx handoff-check@0.3.0 verify --require-content --require-active --format json
+npx handoff-check@0.3.1 verify --require-content --require-active --format json
 ```
 
 A zero active set produces global NO_ACTIVE_CONSTRAINTS (no fake ID), mismatch
@@ -80,8 +83,8 @@ init and snapshot reject it. See the
 After reviewing rules at handoff creation, capture a new baseline:
 
 ```sh
-npx handoff-check@0.3.0 snapshot --task "Resume migration review" --output handoff.next.json
-npx handoff-check@0.3.0 verify --handoff handoff.next.json --require-content --format json
+npx handoff-check@0.3.1 snapshot --task "Resume migration review" --output handoff.next.json
+npx handoff-check@0.3.1 verify --handoff handoff.next.json --require-content --format json
 ```
 
 Snapshot creates a new file exclusively. Review it before deliberately replacing
@@ -116,7 +119,7 @@ or revisioned v2 manifests. Scope must match the v2 handoff's saved scope.
 Review current rules, capture a new v2 baseline, and deliberately update the saved
 handoff. Existing inputs are preserved by init, not silently upgraded. Review
 installed skills, instruction blocks and CI commands to update their pinned
-version to 0.3.0 and add `--require-content`. Init refuses to overwrite differing
+version to 0.3.1 and add `--require-content`. Init refuses to overwrite differing
 integrations; compare them with the new packaged templates and update reviewed
 copies explicitly. Never refresh before checking resumed work or reuse capturedAt
 as the clock for real resumed work.
@@ -161,7 +164,8 @@ bun run check
 ```
 
 Bun 1.2.10 is used in CI. Build output runs on Node.js 22 or newer. The package
-name is `handoff-check`; claiming it requires authenticated npm publication.
+name is `handoff-check`; release operations use reviewed artifacts and trusted
+publishing as described in [the release guide](docs/releasing.md).
 
 ## Try the reproducible demo
 
@@ -241,7 +245,21 @@ handoff-check verify --scope <scope>
   [--handoff <path>]       default: handoff.json
   [--as-of <UTC time>]     default: current time, captured once
   [--format text|json]     default: text
+  [--require-content]      require a v2 content-aware handoff
+  [--require-active]       fail when no active constraints apply
+
+handoff-check snapshot --task <task>
+  [--config <path>] [--constraints <path>] [--scope <scope>]
+  [--as-of <UTC time>] [--output <new-file>] [--format text|json]
+
+handoff-check init --scope <scope>
+  [--agent codex|claude|both|none] [--dry-run] [--ci] [--format text|json]
 ```
+
+Snapshot writes v2 JSON to stdout unless `--output` creates a new file. Its
+`--format` option controls the saved-file acknowledgement when an output path is
+used. The two `--require-*` policies and `--handoff` are verify-only. Run
+`handoff-check --help` for the complete option list.
 
 The same inputs, scope, and time produce the same output. Use `--as-of` for
 reproducible CI checks. Explicit CLI paths resolve from the current working directory;
@@ -251,8 +269,8 @@ include global rules even when no scope-specific rules exist.
 
 | Exit code | Meaning                                                    |
 | --------- | ---------------------------------------------------------- |
-| 0         | Declared IDs match the active manifest rules               |
-| 1         | Rule mismatch; inspect findings                            |
+| 0         | Verification succeeded, including requested policies       |
+| 1         | Rule or active-set policy mismatch; inspect findings       |
 | 2         | Invalid arguments, invalid input, or unreadable input file |
 
 Per-rule findings include `MISSING`, `EXPIRED`, `REVOKED`, `SUPERSEDED`, `OUT_OF_SCOPE`,
