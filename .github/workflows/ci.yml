@@ -35,9 +35,20 @@ jobs:
           cd "$CONSUMER"
           npx --yes --offline --package="$PACKAGE" handoff-check init --scope staging --agent both --ci
           npx --yes --offline --package="$PACKAGE" handoff-check verify --format json --require-content
+          npx --yes --offline --package="$PACKAGE" handoff-check verify > empty-summary.txt
+          node -e 'const s=require("node:fs").readFileSync("empty-summary.txt","utf8");if(!s.includes("PASS (EMPTY)")||!s.includes("0 active constraints checked"))process.exit(1)'
+          if npx --yes --offline --package="$PACKAGE" handoff-check verify --require-active --format json > empty-policy.json; then
+            echo "Expected require-active to reject the empty starter"
+            exit 1
+          else
+            VERIFY_EXIT=$?
+            test "$VERIFY_EXIT" -eq 1
+          fi
+          node -e 'const r=require("./empty-policy.json");if(r.activeConstraintCount!==0||r.findings[0].code!=="NO_ACTIVE_CONSTRAINTS"||Object.hasOwn(r.findings[0],"id"))process.exit(1)'
           node -e 'require("node:fs").writeFileSync("constraints.json",JSON.stringify({schemaVersion:2,constraints:[{id:"C-01",revision:1,scope:"staging",description:"Review migrations",source:"synthetic:ci"}]}))'
           npx --yes --offline --package="$PACKAGE" handoff-check snapshot --task "Resume migrations" --output handoff.next.json
-          npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.next.json --require-content --format json
+          npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.next.json --require-content --require-active --format json > active-result.json
+          node -e 'const r=require("./active-result.json");if(r.status!=="verified"||r.activeConstraintCount!==1)process.exit(1)'
           node -e 'const fs=require("node:fs"),p=JSON.parse(fs.readFileSync("constraints.json"));p.constraints[0].description="Require two reviewers";fs.writeFileSync("constraints.json",JSON.stringify(p))'
           if npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.next.json --require-content --format json > changed.json; then
             echo "Expected same-ID content change to fail"
