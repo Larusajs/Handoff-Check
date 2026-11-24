@@ -30,6 +30,9 @@
 
 ## Following releases
 
+Implemented in 0.3.0: active-rule counts, explicit empty-check summaries and optional
+nonempty verification policy, with v1 default JSON compatibility.
+
 Implemented in 0.2.0: revisioned v2 manifests, content-aware handoff snapshots,
 canonical SHA-256 comparison, CHANGED findings, explicit --require-content,
 legacy compatibility and reviewed migration guidance. No automatic baseline refresh.
