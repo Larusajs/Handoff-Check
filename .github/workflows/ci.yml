@@ -75,3 +75,17 @@ jobs:
             test "$VERIFY_EXIT" -eq 1
           fi
           node -e 'const r=require("./retained-change.json");if(r.schemaVersion!==3||r.findings[0].changes[0].field!=="description"||r.findings[0].changes[0].before!=="Review migrations"||r.findings[0].changes[0].after!=="Require two reviewers")process.exit(1)'
+          node -e 'const fs=require("node:fs");fs.writeFileSync("constraints.bound.json",JSON.stringify({schemaVersion:3,projectId:"ci-project",constraints:[{id:"B-01",revision:1,scope:"staging",description:"Review bound work",source:"synthetic:ci"}]}));fs.writeFileSync(".handoff-check.json",JSON.stringify({schemaVersion:2,projectId:"ci-project",profiles:{stage:{scope:"staging",constraints:"constraints.bound.json",handoff:"handoff.bound.json"}}}))'
+          npx --yes --offline --package="$PACKAGE" handoff-check snapshot --profile stage --task "Review project baseline" --output handoff.bound.json
+          npx --yes --offline --package="$PACKAGE" handoff-check verify --profile stage --require-content --report --format json > bound-report.json
+          node -e 'const fs=require("node:fs"),crypto=require("node:crypto"),r=require("./bound-report.json"),sha="sha256:"+crypto.createHash("sha256").update(fs.readFileSync("constraints.bound.json")).digest("hex");if(r.result.schemaVersion!==4||r.result.projectId!=="ci-project"||r.profile!=="stage"||r.inputs.manifest.sha256!==sha)process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check hook-config --host claude --profile stage > hook-profile.json
+          node -e 'const cp=require("node:child_process"),h=require("./hook-profile.json").hooks.SessionStart[0].hooks[0],args=h.args.map(a=>a.replace("${CLAUDE_PROJECT_DIR}",process.cwd())),r=JSON.parse(cp.execFileSync(h.command,args,{input:JSON.stringify({hook_event_name:"SessionStart",source:"resume",cwd:process.cwd()}),encoding:"utf8"}));if(!r.hookSpecificOutput.additionalContext.includes("Project ci-project. Profile stage."))process.exit(1)'
+          node -e 'const fs=require("node:fs"),h=JSON.parse(fs.readFileSync("handoff.bound.json"));h.projectId="another-project";fs.writeFileSync("handoff.bound.json",JSON.stringify(h))'
+          if npx --yes --offline --package="$PACKAGE" handoff-check verify --profile stage --format json > cross-project.json; then
+            echo "Expected cross-project baseline rejection"
+            exit 1
+          else
+            VERIFY_EXIT=$?
+            test "$VERIFY_EXIT" -eq 2
+          fi
