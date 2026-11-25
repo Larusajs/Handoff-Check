@@ -49,6 +49,11 @@ jobs:
           npx --yes --offline --package="$PACKAGE" handoff-check snapshot --task "Resume migrations" --output handoff.next.json
           npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.next.json --require-content --require-active --format json > active-result.json
           node -e 'const r=require("./active-result.json");if(r.status!=="verified"||r.activeConstraintCount!==1)process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check doctor --format json > doctor.json
+          node -e 'const r=require("./doctor.json");if(r.status!=="healthy"||r.paths.constraints!==require("node:path").resolve("constraints.json"))process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check hook-config --host claude > hook-config.json
+          npm install --offline --ignore-scripts --no-audit --no-fund --save-dev "$PACKAGE"
+          node -e 'const fs=require("node:fs"),cp=require("node:child_process"),h=require("./hook-config.json").hooks.SessionStart[0].hooks[0],args=h.args.map(a=>a.replace("${CLAUDE_PROJECT_DIR}",process.cwd())),output=JSON.parse(cp.execFileSync(h.command,args,{input:JSON.stringify({hook_event_name:"SessionStart",source:"resume",cwd:process.cwd(),transcript_path:"DO-NOT-OPEN"}),encoding:"utf8"}));if(!output.hookSpecificOutput.additionalContext.includes("MISSING C-01"))process.exit(1)'
           npx --yes --offline --package="$PACKAGE" handoff-check explain --format json > explanation.json
           node -e 'const r=require("./explanation.json");if(r.activeConstraintCount!==1||r.rules[0].decision!=="ACTIVE")process.exit(1)'
           npx --yes --offline --package="$PACKAGE" handoff-check snapshot --task "Review retained baseline" --include-content --output handoff.retained.json
