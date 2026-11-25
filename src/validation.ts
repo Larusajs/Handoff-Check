@@ -59,19 +59,13 @@ export function timestamp(value: unknown, path: string): number {
   return millis;
 }
 
-function version(
-  value: Record<string, unknown>,
-  path: string,
-  retained = false,
-) {
+function version(value: Record<string, unknown>, path: string, max: number) {
   if (
-    value.schemaVersion !== 1 &&
-    value.schemaVersion !== 2 &&
-    !(retained && value.schemaVersion === 3)
+    !Number.isInteger(value.schemaVersion) ||
+    (value.schemaVersion as number) < 1 ||
+    (value.schemaVersion as number) > max
   )
-    fail(
-      `${path}.schemaVersion: expected ${retained ? "1, 2 or 3" : "1 or 2"}`,
-    );
+    fail(`${path}.schemaVersion: expected 1 through ${max}`);
 }
 
 function revision(value: unknown, path: string): number {
@@ -138,15 +132,27 @@ function parseConstraint(
 
 export function parseManifest(input: unknown): Manifest {
   const root = object(input, "manifest");
-  keys(root, ["schemaVersion", "constraints"], "manifest");
-  version(root, "manifest");
+  keys(
+    root,
+    [
+      "schemaVersion",
+      "constraints",
+      ...(root.schemaVersion === 3 ? ["projectId"] : []),
+    ],
+    "manifest",
+  );
+  version(root, "manifest", 3);
+  const projectId =
+    root.schemaVersion === 3
+      ? identifier(root.projectId, "manifest.projectId")
+      : undefined;
   if (!Array.isArray(root.constraints))
     fail("manifest.constraints: expected an array");
   const constraints: Constraint[] = root.constraints.map((entry, index) => {
     return parseConstraint(
       entry,
       `manifest.constraints[${index}]`,
-      root.schemaVersion === 2,
+      root.schemaVersion !== 1,
     );
   });
   unique(
@@ -176,12 +182,16 @@ export function parseManifest(input: unknown): Manifest {
     }
     for (const id of path) completed.add(id);
   }
-  return { schemaVersion: root.schemaVersion as 1 | 2, constraints };
+  return {
+    schemaVersion: root.schemaVersion as 1 | 2 | 3,
+    ...(projectId === undefined ? {} : { projectId }),
+    constraints,
+  };
 }
 
 export function parseHandoff(input: unknown): Handoff {
   const root = object(input, "handoff");
-  version(root, "handoff", true);
+  version(root, "handoff", 4);
   keys(
     root,
     [
@@ -189,6 +199,7 @@ export function parseHandoff(input: unknown): Handoff {
       "task",
       "activeConstraints",
       ...(root.schemaVersion !== 1 ? ["scope", "capturedAt"] : []),
+      ...(root.schemaVersion === 4 ? ["projectId", "contentMode"] : []),
     ],
     "handoff",
   );
@@ -196,6 +207,19 @@ export function parseHandoff(input: unknown): Handoff {
   if (!Array.isArray(root.activeConstraints))
     fail("handoff.activeConstraints: expected an array");
   if (root.schemaVersion !== 1) {
+    const projectId =
+      root.schemaVersion === 4
+        ? identifier(root.projectId, "handoff.projectId")
+        : undefined;
+    if (
+      root.schemaVersion === 4 &&
+      root.contentMode !== "hashes" &&
+      root.contentMode !== "retained"
+    )
+      fail("handoff.contentMode: expected hashes or retained");
+    const retained =
+      root.schemaVersion === 3 ||
+      (root.schemaVersion === 4 && root.contentMode === "retained");
     const scope = identifier(root.scope, "handoff.scope");
     timestamp(root.capturedAt, "handoff.capturedAt");
     const activeConstraints: RuleReference[] = root.activeConstraints.map(
@@ -204,12 +228,7 @@ export function parseHandoff(input: unknown): Handoff {
         const ref = object(entry, path);
         keys(
           ref,
-          [
-            "id",
-            "revision",
-            "contentHash",
-            ...(root.schemaVersion === 3 ? ["content"] : []),
-          ],
+          ["id", "revision", "contentHash", ...(retained ? ["content"] : [])],
           path,
         );
         const contentHash = string(ref.contentHash, `${path}.contentHash`);
@@ -222,7 +241,7 @@ export function parseHandoff(input: unknown): Handoff {
           revision: revision(ref.revision, `${path}.revision`),
           contentHash,
         };
-        if (root.schemaVersion === 3) {
+        if (retained) {
           const content = parseConstraint(ref.content, `${path}.content`, true);
           const expected = reference(content);
           if (
@@ -247,6 +266,9 @@ export function parseHandoff(input: unknown): Handoff {
     );
     return {
       schemaVersion: root.schemaVersion,
+      ...(root.schemaVersion === 4
+        ? { projectId, contentMode: root.contentMode }
+        : {}),
       task,
       scope,
       capturedAt: root.capturedAt as string,

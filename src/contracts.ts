@@ -11,7 +11,8 @@ export interface Constraint {
 }
 
 export interface Manifest {
-  schemaVersion: 1 | 2;
+  schemaVersion: 1 | 2 | 3;
+  projectId?: string;
   constraints: Constraint[];
 }
 
@@ -47,7 +48,27 @@ export interface RetainedHandoff {
   activeConstraints: RetainedReference[];
 }
 
-export type Handoff = LegacyHandoff | ContentHandoff | RetainedHandoff;
+interface ProjectHandoffBase {
+  schemaVersion: 4;
+  projectId: string;
+  task: string;
+  scope: string;
+  capturedAt: string;
+}
+export interface ProjectHashHandoff extends ProjectHandoffBase {
+  contentMode: "hashes";
+  activeConstraints: RuleReference[];
+}
+export interface ProjectRetainedHandoff extends ProjectHandoffBase {
+  contentMode: "retained";
+  activeConstraints: RetainedReference[];
+}
+export type Handoff =
+  | LegacyHandoff
+  | ContentHandoff
+  | RetainedHandoff
+  | ProjectHashHandoff
+  | ProjectRetainedHandoff;
 
 export interface FieldChange {
   field: keyof Constraint;
@@ -86,7 +107,8 @@ export interface EmptyPolicyFinding {
 export type Finding = RuleFinding | EmptyPolicyFinding;
 
 export interface VerificationResult {
-  schemaVersion: 1 | 2 | 3;
+  schemaVersion: 1 | 2 | 3 | 4;
+  projectId?: string;
   tracking?: "content";
   activeConstraintCount?: number;
   status: "verified" | "mismatch";
@@ -99,6 +121,7 @@ export interface VerificationResult {
 
 export interface Explanation {
   schemaVersion: 1;
+  projectId?: string;
   scope: string;
   asOf: string;
   activeConstraintCount: number;

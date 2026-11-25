@@ -17,6 +17,13 @@ No verification operation writes inputs, accesses a network, calls a model,
 executes source references, or reads agent transcripts. Output order must be
 independent of manifest and handoff ordering.
 
+Bound input formats compare explicit project IDs in the pure core. Config v2
+profiles are selected explicitly in the CLI and shared with doctor/lifecycle.
+Optional report metadata hashes the SAME byte reads used to parse inputs/config.
+Git subprocesses are fixed-argument, read-only, bounded and separately opt-in for
+reports; the verifier itself never reads Git. See ADR 0006 for non-atomicity and
+authentication limits.
+
 Doctor inspects local inputs/integration metadata without executing host commands.
 The bounded Claude lifecycle adapter reads an event envelope and explicit config,
 then calls the same verifier. Hook-config prints a mergeable snippet, never writes

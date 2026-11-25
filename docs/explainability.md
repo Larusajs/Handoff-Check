@@ -1,13 +1,13 @@
 # Explain applicability and review changes
 
-Requires Handoff Check 0.5.0+ and Node.js 22+. Run from your configured repository.
+Requires Handoff Check 0.6.0+ and Node.js 22+. Run from your configured repository.
 No service, model call or API key is needed.
 
 ## Understand the active set
 
 ```sh
-npx handoff-check@0.5.0 explain --format json
-npx handoff-check@0.5.0 explain --scope production --format markdown
+npx handoff-check@0.6.0 explain --format json
+npx handoff-check@0.6.0 explain --scope production --format markdown
 ```
 
 Explain reads the manifest but not the handoff. Every rule has an applicability
@@ -20,14 +20,14 @@ exits 0 even with zero active rules: use verify to compare a handoff.
 At a reviewed handoff creation, after upgrading all consumers to 0.4+:
 
 ```sh
-npx handoff-check@0.5.0 snapshot --task "Review staging migrations" --include-content --output handoff.reviewed.json
-npx handoff-check@0.5.0 verify --handoff handoff.reviewed.json --require-content --require-active --format markdown
+npx handoff-check@0.6.0 snapshot --task "Review staging migrations" --include-content --output handoff.reviewed.json
+npx handoff-check@0.6.0 verify --handoff handoff.reviewed.json --require-content --require-active --format markdown
 ```
 
 Review the new file before explicitly adopting it in config. Snapshot never
-overwrites a path. Default snapshots remain v2; the flag creates v3 containing
+overwrites a path. Unbound snapshots remain v2; the flag creates v3 containing
 full old descriptions, sources, revision and lifecycle values. Consider sensitive
-content before storing or sharing. Old v1/v2 files do not require migration.
+content before storing or sharing. Old v1/v2 files do not require migration. Bound manifest v3 capture creates handoff v4; see project-context.md.
 
 After a same-ID description edit, verification produces CHANGED and exit 1.
 V3 JSON adds typed `changes`; text and Markdown show the saved/current fields.

@@ -1,5 +1,9 @@
 # Roadmap
 
+Implemented in 0.6.0: opt-in portable project IDs, explicit environment profiles,
+and verification metadata reports with separately requested Git context.
+See [project/profile/report guide](project-context.md).
+
 Implemented in 0.5.0: read-only doctor, opt-in Claude advisory SessionStart adapter
 and configuration snippet, host matrix and critical-action recipes.
 See [lifecycle setup](lifecycle.md). Codex/Cursor adapters remain unshipped.

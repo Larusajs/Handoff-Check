@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+- Add opt-in manifest v3/handoff v4 portable project binding with strict matching.
+- Add config v2 named environment profiles selected only by explicit --profile.
+- Add optional verification report wrappers with exact parsed-input/config byte digests.
+- Add separately requested, bounded read-only Git worktree/commit/branch context.
+- Share profile/binding semantics with doctor and the advisory Claude adapter.
+- Preserve old unbound contracts and default outputs; no automatic migration or baseline refresh.
+
 ## 0.5.0
 
 - Add read-only doctor diagnostics for project inputs, versions, paths and integrations.

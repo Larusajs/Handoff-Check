@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "projectId": "sample-project",
+  "constraints": [
+    {
+      "id": "G-01",
+      "scope": "global",
+      "revision": 1,
+      "description": "Review unresolved findings before affected work",
+      "source": "synthetic:global-policy"
+    },
+    {
+      "id": "S-01",
+      "scope": "staging",
+      "revision": 1,
+      "description": "Require review before staging migrations",
+      "source": "synthetic:staging-policy"
+    },
+    {
+      "id": "P-01",
+      "scope": "production",
+      "revision": 1,
+      "description": "Require approval before production changes",
+      "source": "synthetic:production-policy"
+    }
+  ]
+}

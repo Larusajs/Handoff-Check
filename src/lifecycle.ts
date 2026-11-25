@@ -1,6 +1,6 @@
 import { realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
-import { loadConfig, readJson } from "./config.js";
+import { loadConfig, readJson, selectProfile } from "./config.js";
 import {
   InputError,
   identifier,
@@ -22,7 +22,12 @@ export const lifecycleArgs = [
 ];
 export const lifecycleMatcher = "^(startup|resume|clear|compact)$";
 
-export function hookConfig(host: string, requireActive = false) {
+export function hookConfig(
+  host: string,
+  requireActive = false,
+  profile?: string,
+) {
+  if (profile !== undefined) identifier(profile, "--profile");
   if (host !== "claude")
     throw new InputError(
       "Only the claude lifecycle adapter is supported; see docs/lifecycle.md for host capabilities",
@@ -39,6 +44,7 @@ export function hookConfig(host: string, requireActive = false) {
               args: [
                 ...lifecycleArgs,
                 ...(requireActive ? ["--require-active"] : []),
+                ...(profile === undefined ? [] : ["--profile", profile]),
               ],
               timeout: 10,
             },
@@ -47,6 +53,31 @@ export function hookConfig(host: string, requireActive = false) {
       ],
     },
   };
+}
+
+/** Read only a bounded event envelope; never open transcript_path or other event paths. */
+export function lifecycleInvocation(
+  args: unknown,
+): { requireActive: boolean; profile?: string } | undefined {
+  if (
+    !Array.isArray(args) ||
+    JSON.stringify(args.slice(0, lifecycleArgs.length)) !==
+      JSON.stringify(lifecycleArgs)
+  )
+    return undefined;
+  const tail = args.slice(lifecycleArgs.length);
+  let requireActive = false;
+  if (tail[0] === "--require-active") {
+    requireActive = true;
+    tail.shift();
+  }
+  if (!tail.length) return { requireActive };
+  if (tail.length !== 2 || tail[0] !== "--profile") return undefined;
+  try {
+    return { requireActive, profile: identifier(tail[1], "hook profile") };
+  } catch {
+    return undefined;
+  }
 }
 
 /** Read only a bounded event envelope; never open transcript_path or other event paths. */
@@ -102,6 +133,7 @@ export async function lifecycleHook(
   input: unknown,
   configPath: string,
   requireActive = false,
+  profile?: string,
 ) {
   if (!input || typeof input !== "object" || Array.isArray(input))
     throw new InputError("Hook event must be an object");
@@ -133,7 +165,9 @@ export async function lifecycleHook(
     );
   let summary: string;
   try {
-    const { config, directory } = await loadConfig(root, configPath);
+    const loaded = await loadConfig(root, configPath);
+    const config = selectProfile(loaded.config, profile);
+    const directory = loaded.directory;
     const scope = identifier(config.scope, "config.scope");
     const manifest = parseManifest(
       await readJson(
@@ -145,15 +179,21 @@ export async function lifecycleHook(
     );
     if (handoff.schemaVersion === 1)
       throw new InputError(
-        "Lifecycle checks require a content-aware v2/v3 handoff; review and capture before adoption",
+        "Lifecycle checks require a content-aware v2/v3/v4 handoff; review and capture before adoption",
       );
     const result = verify(manifest, handoff, scope, new Date().toISOString(), {
       requireActive,
+      ...(config.projectId === undefined
+        ? {}
+        : { projectId: config.projectId }),
     });
     const count = result.expectedConstraints.length;
     const label =
       result.status === "verified" ? (count ? "PASS" : "PASS (EMPTY)") : "FAIL";
     summary = `${label}; ${count} active constraints; scope ${scope}; as of ${result.asOf}.`;
+    if (result.projectId !== undefined)
+      summary += ` Project ${result.projectId}.`;
+    if (profile !== undefined) summary += ` Profile ${profile}.`;
     if (!count)
       summary +=
         " No active constraints apply; this is not real policy coverage.";

@@ -1,10 +1,17 @@
 import { lstat, readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import metadata from "../package.json" with { type: "json" };
-import { loadConfig, readJson } from "./config.js";
 import {
-  lifecycleArgs,
+  loadConfig,
+  ProfileError,
+  type ProjectConfig,
+  readJson,
+  selectProfile,
+} from "./config.js";
+import type { Handoff, Manifest } from "./contracts.js";
+import {
   lifecycleCommand,
+  lifecycleInvocation,
   lifecycleMatcher,
 } from "./lifecycle.js";
 import {
@@ -13,6 +20,7 @@ import {
   parseHandoff,
   parseManifest,
 } from "./validation.js";
+import { checkProject } from "./verifier.js";
 
 interface Diagnostic {
   code: string;
@@ -29,6 +37,7 @@ export async function doctor(
     handoff?: string;
     scope?: string;
     host?: string;
+    profile?: string;
   },
 ) {
   if (
@@ -49,8 +58,16 @@ export async function doctor(
   };
   let scope: string | undefined;
   let handoffScope: string | undefined;
+  let projectId: string | undefined;
+  let parsedManifest: Manifest | undefined;
+  let parsedHandoff: Handoff | undefined;
+  let savedConfig: ProjectConfig | undefined;
   try {
-    const { config, directory } = await loadConfig(cwd, options.config);
+    const loaded = await loadConfig(cwd, options.config);
+    savedConfig = loaded.config;
+    const config = selectProfile(loaded.config, options.profile);
+    const directory = loaded.directory;
+    projectId = config.projectId;
     try {
       await stat(configPath);
       add("CONFIG", "ok", "Config parsed", configPath);
@@ -81,6 +98,7 @@ export async function doctor(
         : resolve(cwd, options.handoff);
     try {
       const manifest = parseManifest(await readJson(paths.constraints));
+      parsedManifest = manifest;
       add(
         "MANIFEST",
         "ok",
@@ -98,11 +116,12 @@ export async function doctor(
     }
     try {
       const handoff = parseHandoff(await readJson(paths.handoff));
+      parsedHandoff = handoff;
       if (handoff.schemaVersion !== 1) handoffScope = handoff.scope;
       add(
         "HANDOFF",
         handoff.schemaVersion === 1 ? "warning" : "ok",
-        `Supported handoff v${handoff.schemaVersion}${handoff.schemaVersion === 1 ? "; IDs only, lifecycle adapter requires v2/v3" : "; content-aware"}`,
+        `Supported handoff v${handoff.schemaVersion}${handoff.schemaVersion === 1 ? "; IDs only, lifecycle adapter requires v2/v3/v4" : "; content-aware"}`,
         paths.handoff,
       );
     } catch (e) {
@@ -114,7 +133,21 @@ export async function doctor(
         "error",
         `Saved handoff scope '${handoffScope}' differs from selected '${scope}'`,
       );
+    if (parsedManifest && parsedHandoff)
+      try {
+        const bound = checkProject(
+          parsedManifest,
+          parsedHandoff,
+          config.projectId,
+        );
+        projectId = bound;
+        if (bound !== undefined)
+          add("PROJECT_BINDING", "ok", `Bound project: ${bound}`);
+      } catch (e) {
+        add("PROJECT_BINDING", "error", (e as Error).message);
+      }
   } catch (e) {
+    if (e instanceof ProfileError) throw e;
     add("CONFIG", "error", (e as Error).message, configPath);
   }
 
@@ -254,11 +287,28 @@ export async function doctor(
           for (const hook of group.hooks) {
             if (
               hook?.command === lifecycleCommand &&
-              (JSON.stringify(hook.args) === JSON.stringify(lifecycleArgs) ||
-                JSON.stringify(hook.args) ===
-                  JSON.stringify([...lifecycleArgs, "--require-active"]))
+              lifecycleInvocation(hook.args) !== undefined
             ) {
               configured = true;
+              const invocation = lifecycleInvocation(hook.args);
+              if (invocation?.profile !== undefined)
+                try {
+                  if (!savedConfig) throw new Error("Config unavailable");
+                  selectProfile(savedConfig, invocation.profile);
+                  add(
+                    "HOOK_PROFILE",
+                    "info",
+                    `Hook explicitly selects profile: ${invocation.profile}`,
+                    settingsPath,
+                  );
+                } catch {
+                  add(
+                    "HOOK_PROFILE",
+                    "error",
+                    "Hook selects an unavailable profile; review config v2",
+                    settingsPath,
+                  );
+                }
               add(
                 "CLAUDE_HOOK",
                 group.matcher === lifecycleMatcher &&
@@ -357,6 +407,8 @@ export async function doctor(
       : "healthy",
     paths,
     ...(scope ? { scope } : {}),
+    ...(projectId === undefined ? {} : { projectId }),
+    ...(options.profile === undefined ? {} : { profile: options.profile }),
     diagnostics,
     notice:
       "Read-only local diagnostics, not handoff verification or proof that host hooks/skills executed. User/global/managed host settings are not inspected.",

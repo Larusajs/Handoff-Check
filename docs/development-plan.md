@@ -1,7 +1,7 @@
 # Development plan
 
 Status: 0.3.1 onboarding, 0.4 explainability and 0.5 diagnostics/lifecycle implemented;
-later milestones proposed.
+0.6 project/profile/report support is also implemented; later milestones proposed.
 Research reviewed: 2026-11-24. Version labels below are targets, not release promises.
 
 ## Product direction
@@ -102,7 +102,13 @@ Acceptance:
 - No automatic baseline refresh, silent policy opt-in, or hook installation overwrite.
 - No claim that doctor can see every instruction or hidden host memory.
 
-## 0.6: project and environment correctness
+## 0.6: project and environment correctness (implemented)
+
+Implemented under [ADR 0006](decisions/0006-project-profiles-and-reports.md):
+opt-in manifest3/handoff4 project binding, config2 explicit profiles and optional
+reproducibility reports with separately requested Git metadata. Existing unbound
+workflows are preserved; no profile/identity is inferred. Pilot recruitment and
+real-world measurements remain future work, not completed validation claims.
 
 Priority: medium/high; validate with worktree and multi-environment pilots first.
 
