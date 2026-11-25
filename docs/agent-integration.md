@@ -9,8 +9,8 @@ infers rules from a summary.
 From the consuming repository root:
 
 ```sh
-npx handoff-check@0.4.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.4.0 init --scope staging --agent both
+npx handoff-check@0.5.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.5.0 init --scope staging --agent both
 ```
 
 Choose `codex`, `claude`, `both` (default), or `none`. Generated integrations:
@@ -39,8 +39,8 @@ npm pack
 From a separate consuming project, substitute the actual absolute tarball path:
 
 ```sh
-npx --offline --yes --package=/absolute/path/handoff-check-0.4.0.tgz handoff-check init --scope staging --agent both
-npx --offline --yes --package=/absolute/path/handoff-check-0.4.0.tgz handoff-check verify --format json --require-content
+npx --offline --yes --package=/absolute/path/handoff-check-0.5.0.tgz handoff-check init --scope staging --agent both
+npx --offline --yes --package=/absolute/path/handoff-check-0.5.0.tgz handoff-check verify --format json --require-content
 ```
 
 Bun is not required for these consumer commands. Generated agent commands use the
@@ -81,8 +81,9 @@ See [upgrade instructions](../README.md#upgrade-from-01).
 Skill discovery depends on the host agent. Skills/instructions are guidance, not
 guaranteed hooks. `init --ci` adds `.github/workflows/handoff-check.yml` pinned to
 the installed version and using saved config. This checks committed IDs on push/PR,
-not every agent turn. Host-specific hooks are a future integration because host
-events and context-reset behavior differ.
+not every agent turn. 0.5 adds a separate opt-in Claude advisory lifecycle adapter.
+See [setup and host limits](lifecycle.md) for doctor diagnostics and explicit local
+installation. Codex/Cursor adapters are not shipped.
 
 ## Upgrades and contributor instructions
 

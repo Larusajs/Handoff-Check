@@ -3,7 +3,7 @@
 A deterministic, local CLI that verifies active constraints before a coding agent
 resumes work.
 
-**Version: 0.4.0.**
+**Version: 0.5.0.**
 
 A task summary may preserve the goal while losing an active rule, carrying an
 expired restriction, or moving a staging-only instruction into production.
@@ -18,8 +18,8 @@ Source references are review metadata and are never fetched.
 Run in the repository where your agent works:
 
 ```sh
-npx handoff-check@0.4.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.4.0 init --scope staging --agent both
+npx handoff-check@0.5.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.5.0 init --scope staging --agent both
 ```
 
 This creates `.handoff-check.json`, starter `constraints.json` and `handoff.json`,
@@ -33,7 +33,7 @@ on verification. Revisions and hashes detect edits under an unchanged rule ID.
 Ask a resuming agent to use the installed skill, or run:
 
 ```sh
-npx handoff-check@0.4.0 verify --format json --require-content
+npx handoff-check@0.5.0 verify --format json --require-content
 ```
 
 The saved config supplies paths and scope. `init --ci` also creates a pinned GitHub
@@ -42,7 +42,7 @@ agent execution; CI enforces the declared-ID comparison when its workflow runs.
 Neither checks whether the agent obeys a rule's meaning.
 
 Node.js 22+ is required; end users do not need Bun. Global installation is also
-available: `npm install --global handoff-check@0.4.0`. For contributor builds or
+available: `npm install --global handoff-check@0.5.0`. For contributor builds or
 offline package testing, see the [setup guide](docs/agent-integration.md).
 
 For a complete first-rule walkthrough, including a passing baseline and a detected
@@ -65,7 +65,7 @@ default but are explicitly marked. Unexpected reported IDs still fail.
 To require actual active rules, opt in:
 
 ```sh
-npx handoff-check@0.4.0 verify --require-content --require-active --format json
+npx handoff-check@0.5.0 verify --require-content --require-active --format json
 ```
 
 A zero active set produces global NO_ACTIVE_CONSTRAINTS (no fake ID), mismatch
@@ -83,8 +83,8 @@ init and snapshot reject it. See the
 After reviewing rules at handoff creation, capture a new baseline:
 
 ```sh
-npx handoff-check@0.4.0 snapshot --task "Resume migration review" --output handoff.next.json
-npx handoff-check@0.4.0 verify --handoff handoff.next.json --require-content --format json
+npx handoff-check@0.5.0 snapshot --task "Resume migration review" --output handoff.next.json
+npx handoff-check@0.5.0 verify --handoff handoff.next.json --require-content --format json
 ```
 
 Snapshot creates a new file exclusively. Review it before deliberately replacing
@@ -106,9 +106,9 @@ hashed, but referenced documents are not fetched or checked.
 ## Explain rules and review field changes
 
 ```sh
-npx handoff-check@0.4.0 explain --format markdown
-npx handoff-check@0.4.0 snapshot --task "Review migration" --include-content --output handoff.reviewed.json
-npx handoff-check@0.4.0 verify --handoff handoff.reviewed.json --require-content --format markdown
+npx handoff-check@0.5.0 explain --format markdown
+npx handoff-check@0.5.0 snapshot --task "Review migration" --include-content --output handoff.reviewed.json
+npx handoff-check@0.5.0 verify --handoff handoff.reviewed.json --require-content --format markdown
 ```
 
 `explain` shows every manifest rule's applicability for the selected scope/time,
@@ -152,12 +152,24 @@ or revisioned v2 manifests. Scope must match the v2 handoff's saved scope.
 Review current rules, capture a new v2 baseline, and deliberately update the saved
 handoff. Existing inputs are preserved by init, not silently upgraded. Review
 installed skills, instruction blocks and CI commands to update their pinned
-version to 0.4.0 and add `--require-content`. Init refuses to overwrite differing
+version to 0.5.0 and add `--require-content`. Init refuses to overwrite differing
 integrations; compare them with the new packaged templates and update reviewed
 copies explicitly. Never refresh before checking resumed work or reuse capturedAt
 as the clock for real resumed work.
 
 ## Configuration and initialization
+
+For read-only installation diagnostics, run `npx handoff-check@0.5.0 doctor`.
+`doctor --format json` reports paths, supported input versions and managed
+integration pins. Its exit codes are 0 healthy, 1 attention and 2 invalid invocation;
+it does not verify a handoff or prove a host ran the integration.
+
+`npx handoff-check@0.5.0 hook-config --host claude` emits an opt-in advisory
+SessionStart snippet to merge manually into existing settings. It never overwrites
+settings, and requires a pinned project-local package. The local adapter uses the
+same verifier without network/model calls; startup/resume/clear/compact checks
+cannot authorize or block deployment. Codex/Cursor adapters are not shipped.
+See [lifecycle setup, host matrix and critical-action recipes](docs/lifecycle.md).
 
 `verify` reads only `.handoff-check.json` in the current directory by default,
 without searching parents. Missing implicit config falls back to default input
@@ -292,6 +304,13 @@ handoff-check explain
 
 handoff-check init --scope <scope>
   [--agent codex|claude|both|none] [--dry-run] [--ci] [--format text|json]
+
+handoff-check doctor
+  [--config <path>] [--constraints <path>] [--handoff <path>] [--scope <scope>]
+  [--host claude|codex|cursor] [--format text|json]
+
+handoff-check hook-config --host claude [--require-active]
+handoff-check hook --host claude --config <absolute-path> [--require-active]
 ```
 
 Snapshot writes v2 JSON to stdout unless `--output` creates a new file. Its
