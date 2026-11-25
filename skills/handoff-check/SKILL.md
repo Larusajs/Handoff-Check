@@ -89,3 +89,18 @@ On resume, verify the saved baseline FIRST. Never run snapshot automatically to
 clear CHANGED findings, bypass --require-content, or silently downgrade to v1.
 Existing v1 handoffs need deliberate review/capture to adopt tracking. capturedAt
 is informational; do not reuse it as --as-of for real resumed work.
+
+## Installation diagnostics and lifecycle checks
+
+Use `handoff-check doctor --format json` to diagnose local paths, input versions
+and managed integration pins. Doctor exit 0 means local diagnostics are healthy,
+not that a handoff verified or a host ran this skill. Exit 1 means attention
+needed; exit 2 means invalid invocation. Review fixes explicitly.
+
+`hook-config --host claude` emits a settings snippet only. Setup is opt-in: merge
+it while preserving existing settings and install the reviewed project-local
+package. Never redirect it over settings. Hook exit 0 is advisory transport
+success and may contain FAIL or NOT VERIFIED. Re-run verify for details and
+immediately before critical actions; startup context is not authorization or a
+blocking guarantee. Codex/Cursor adapters are not shipped in 0.5; invoke the CLI
+explicitly there.

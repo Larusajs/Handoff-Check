@@ -4,7 +4,9 @@ import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import metadata from "../package.json" with { type: "json" };
 import { loadConfig, readJson } from "./config.js";
+import { doctor } from "./doctor.js";
 import { initialize } from "./initialize.js";
+import { hookConfig, lifecycleHook, readHookInput } from "./lifecycle.js";
 import {
   explanationText,
   terminalText,
@@ -25,6 +27,9 @@ Usage: handoff-check verify --scope <scope> [options]
        handoff-check init --scope <scope> [--agent both] [--dry-run] [--ci]
        handoff-check snapshot --task <task> [--output <new-file>] [options]
        handoff-check explain --scope <scope> [options]
+       handoff-check doctor [--host claude|codex|cursor] [--format text|json]
+       handoff-check hook-config --host claude [--require-active]
+       handoff-check hook --host claude --config <absolute-path> [--require-active]
 
 Options:
   --constraints <path>  Manifest file (default: constraints.json)
@@ -33,18 +38,21 @@ Options:
   --config <path>       Project config (default: cwd/.handoff-check.json)
   --as-of <UTC time>    Fixed evaluation time (default: current time)
   --require-content    verify: require a v2/v3 content-aware handoff
-  --require-active     verify: fail if no constraints apply to scope/time
+  --require-active     verify: fail if empty; hook/hook-config: opt-in nonempty policy
   --task <task>        snapshot: task description (required)
   --output <path>      snapshot: create a new baseline file, never overwrite
   --include-content    snapshot: retain old rule text in a v3 handoff (opt-in)
   --format text|json|markdown  Markdown is verify/explain-only (default: text)
   --agent <agent>      init: codex, claude, both (default), or none
+  --host <host>        doctor: integration target; hook/hook-config: claude
   --dry-run            init: preview files and instruction changes without writes
   --ci                 init: also create a pinned GitHub Actions check
   --version            Show package version
   --help               Show this help
 
-Exit codes: 0 verified/explained/captured/initialized, 1 rule/policy mismatch, 2 invalid input
+Exit codes: verify 0 verified / 1 mismatch; doctor 0 healthy / 1 attention.
+Hook 0 means advisory response delivered (may report FAIL/INVALID), not verified.
+Invalid invocation/input returns 2; explain/init/snapshot/hook-config succeed with 0.
 `;
 
 async function main(): Promise<number> {
@@ -69,6 +77,7 @@ async function main(): Promise<number> {
         "require-content": { type: "boolean" },
         "require-active": { type: "boolean" },
         "include-content": { type: "boolean" },
+        host: { type: "string" },
         task: { type: "string" },
         output: { type: "string" },
       },
@@ -86,13 +95,98 @@ async function main(): Promise<number> {
     }
     if (
       positionals.length !== 1 ||
-      !["verify", "init", "snapshot", "explain"].includes(positionals[0] ?? "")
+      ![
+        "verify",
+        "init",
+        "snapshot",
+        "explain",
+        "doctor",
+        "hook",
+        "hook-config",
+      ].includes(positionals[0] ?? "")
     )
       throw new InputError(
-        "Expected command: verify, snapshot, explain or init (use --help for usage)",
+        "Expected command: verify, snapshot, explain, init, doctor, hook or hook-config (use --help for usage)",
       );
     const cwd = process.cwd();
     const command = positionals[0];
+    if (["doctor", "hook", "hook-config"].includes(command ?? "")) {
+      const allowed =
+        command === "doctor"
+          ? ["host", "config", "scope", "constraints", "handoff", "format"]
+          : command === "hook"
+            ? ["host", "config", "require-active"]
+            : ["host", "require-active"];
+      for (const key of Object.keys(values)) {
+        if (
+          key === "format" &&
+          values.format === "text" &&
+          !process.argv
+            .slice(2)
+            .some((arg) => arg === "--format" || arg.startsWith("--format="))
+        )
+          continue;
+        if (!allowed.includes(key))
+          throw new InputError(`--${key} is not supported by ${command}`);
+      }
+      if (command === "doctor") {
+        if (values.scope !== undefined) identifier(values.scope, "--scope");
+        for (const key of ["config", "constraints", "handoff"] as const)
+          if (values[key] !== undefined && !values[key].trim())
+            throw new InputError(`--${key}: expected a non-empty path`);
+        if (format === "markdown")
+          throw new InputError("doctor supports text or json");
+        const result = await doctor(cwd, values);
+        if (format === "json")
+          process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+        else {
+          for (const d of result.diagnostics)
+            process.stdout.write(
+              `${d.level.toUpperCase()} ${d.code} ${terminalText(d.message)}${d.path ? ` | ${terminalText(d.path)}` : ""}\n`,
+            );
+          process.stdout.write(
+            `DOCTOR ${result.status.toUpperCase()}\n${result.notice}\n`,
+          );
+        }
+        return result.status === "healthy" ? 0 : 1;
+      }
+      if (values.host !== "claude")
+        throw new InputError(
+          "hook and hook-config require --host claude; other host adapters are not shipped",
+        );
+      if (command === "hook-config") {
+        process.stdout.write(
+          `${JSON.stringify(hookConfig(values.host, values["require-active"] ?? false), null, 2)}\n`,
+        );
+        return 0;
+      }
+      if (!values.config)
+        throw new InputError("hook requires --config <absolute-path>");
+      // A stuck input file (for example a FIFO) must not stall a host session.
+      const watchdog = setTimeout(() => {
+        process.stderr.write(
+          "INVALID Hook check exceeded 5 seconds; not verified\n",
+        );
+        process.exit(2);
+      }, 5000);
+      try {
+        const event = await readHookInput(process.stdin);
+        const result = await lifecycleHook(
+          event,
+          values.config,
+          values["require-active"] ?? false,
+        );
+        process.stdout.write(`${JSON.stringify(result)}\n`);
+        return 0;
+      } finally {
+        clearTimeout(watchdog);
+        process.stdin.destroy();
+      }
+    }
+    if (values.host !== undefined)
+      throw new InputError(
+        "--host is only supported by doctor, hook and hook-config",
+      );
     if (format === "markdown" && command !== "verify" && command !== "explain")
       throw new InputError(
         "--format markdown is only supported by verify and explain",

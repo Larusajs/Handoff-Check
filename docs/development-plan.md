@@ -1,6 +1,7 @@
 # Development plan
 
-Status: 0.3.1 onboarding and 0.4 explainability implemented; later milestones proposed.
+Status: 0.3.1 onboarding, 0.4 explainability and 0.5 diagnostics/lifecycle implemented;
+later milestones proposed.
 Research reviewed: 2026-11-24. Version labels below are targets, not release promises.
 
 ## Product direction
@@ -72,7 +73,13 @@ Acceptance:
 - Reports and verification never silently recapture or adopt a baseline.
 - Evaluate storage size and sensitive-content exposure before choosing defaults.
 
-## 0.5: automatic checks and installation diagnostics
+## 0.5: automatic checks and installation diagnostics (implemented)
+
+Implemented under [ADR 0005](decisions/0005-local-diagnostics-and-lifecycle.md):
+read-only doctor, stdout-only snippet and Claude advisory SessionStart adapter.
+Codex/Cursor interfaces were investigated/documented; adapters are not shipped.
+Tests simulate host protocol and execute generated commands; live model-context
+delivery is not claimed. Pilot recruitment remains future work.
 
 Priority: high, after explainability. No second verification engine.
 

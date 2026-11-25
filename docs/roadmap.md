@@ -1,5 +1,9 @@
 # Roadmap
 
+Implemented in 0.5.0: read-only doctor, opt-in Claude advisory SessionStart adapter
+and configuration snippet, host matrix and critical-action recipes.
+See [lifecycle setup](lifecycle.md). Codex/Cursor adapters remain unshipped.
+
 See the [development plan](development-plan.md) for research evidence, proposed
 0.4–0.6 milestones, dependencies, pilot validation, and acceptance criteria.
 The plan distinguishes implemented releases from proposed milestones and dates.

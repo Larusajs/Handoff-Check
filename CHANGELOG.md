@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- Add read-only doctor diagnostics for project inputs, versions, paths and integrations.
+- Add stdout-only hook-config for explicit, non-overwriting Claude SessionStart setup.
+- Add a bounded local advisory lifecycle adapter using the existing verifier.
+- Document host capabilities, local-package prerequisites and fresh critical-action checks.
+- Preserve verify/snapshot/explain contracts; never automatically refresh baselines.
+
 ## 0.4.0
 
 - Add manifest-only explain in text, JSON and Markdown using verifier lifecycle decisions.

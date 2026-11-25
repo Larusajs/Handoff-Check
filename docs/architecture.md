@@ -17,6 +17,12 @@ No verification operation writes inputs, accesses a network, calls a model,
 executes source references, or reads agent transcripts. Output order must be
 independent of manifest and handoff ordering.
 
+Doctor inspects local inputs/integration metadata without executing host commands.
+The bounded Claude lifecycle adapter reads an event envelope and explicit config,
+then calls the same verifier. Hook-config prints a mergeable snippet, never writes
+host settings. Advisory host transport success is distinct from verification.
+See decisions/0005-local-diagnostics-and-lifecycle.md.
+
 Exit codes: 0 for verified IDs, 1 for rule mismatches, 2 for invalid input or an
 unreadable input file. JSON output is intended for agent adapters and automation.
 

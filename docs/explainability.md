@@ -1,13 +1,13 @@
 # Explain applicability and review changes
 
-Requires Handoff Check 0.4.0+ and Node.js 22+. Run from your configured repository.
+Requires Handoff Check 0.5.0+ and Node.js 22+. Run from your configured repository.
 No service, model call or API key is needed.
 
 ## Understand the active set
 
 ```sh
-npx handoff-check@0.4.0 explain --format json
-npx handoff-check@0.4.0 explain --scope production --format markdown
+npx handoff-check@0.5.0 explain --format json
+npx handoff-check@0.5.0 explain --scope production --format markdown
 ```
 
 Explain reads the manifest but not the handoff. Every rule has an applicability
@@ -20,8 +20,8 @@ exits 0 even with zero active rules: use verify to compare a handoff.
 At a reviewed handoff creation, after upgrading all consumers to 0.4+:
 
 ```sh
-npx handoff-check@0.4.0 snapshot --task "Review staging migrations" --include-content --output handoff.reviewed.json
-npx handoff-check@0.4.0 verify --handoff handoff.reviewed.json --require-content --require-active --format markdown
+npx handoff-check@0.5.0 snapshot --task "Review staging migrations" --include-content --output handoff.reviewed.json
+npx handoff-check@0.5.0 verify --handoff handoff.reviewed.json --require-content --require-active --format markdown
 ```
 
 Review the new file before explicitly adopting it in config. Snapshot never
