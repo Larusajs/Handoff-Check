@@ -35,9 +35,12 @@ export function verificationMarkdown(
     "",
     `- Result: ${label}`,
     `- Scope: ${markdownText(result.scope)}`,
+    ...(result.projectId === undefined
+      ? []
+      : [`- Project: ${markdownText(result.projectId)}`]),
     `- Evaluated at: ${markdownText(result.asOf)}`,
     `- Active constraints checked: ${result.expectedConstraints.length}`,
-    `- Tracking: ${handoff.schemaVersion === 1 ? "IDs only; content changes not checked" : handoff.schemaVersion === 3 ? "Content hashes with retained old content" : "Content hashes; old content not retained"}`,
+    `- Tracking: ${handoff.schemaVersion === 1 ? "IDs only; content changes not checked" : handoff.schemaVersion === 3 || (handoff.schemaVersion === 4 && handoff.contentMode === "retained") ? "Content hashes with retained old content" : "Content hashes; old content not retained"}`,
     `- Require content-aware handoff: ${requireContent}`,
     `- Require active constraints: ${requireActive}`,
     "",
@@ -86,6 +89,9 @@ export function explanationText(
       "# Handoff Check explanation",
       "",
       `- Scope: ${markdownText(result.scope)}`,
+      ...(result.projectId === undefined
+        ? []
+        : [`- Project: ${markdownText(result.projectId)}`]),
       `- Evaluated at: ${markdownText(result.asOf)}`,
       `- Active constraints: ${result.activeConstraintCount}`,
       "",
@@ -105,7 +111,7 @@ export function explanationText(
       (rule) =>
         `${rule.decision.padEnd(12)} ${rule.id}  ${terminalText(rule.reason)}; ${terminalText(rule.description)}; source ${terminalText(rule.source)}`,
     ),
-    `EXPLAIN  ${result.activeConstraintCount} active constraints | ${result.rules.length} manifest rules | scope ${result.scope} | as of ${result.asOf}`,
+    `EXPLAIN  ${result.activeConstraintCount} active constraints | ${result.rules.length} manifest rules | scope ${result.scope} | as of ${result.asOf}${result.projectId === undefined ? "" : ` | project ${result.projectId}`}`,
     "No handoff was compared.",
     "",
   ].join("\n");

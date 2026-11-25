@@ -3,7 +3,7 @@ import { type FileHandle, open } from "node:fs/promises";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import metadata from "../package.json" with { type: "json" };
-import { loadConfig, readJson } from "./config.js";
+import { loadConfig, readJsonRecord, selectProfile } from "./config.js";
 import { doctor } from "./doctor.js";
 import { initialize } from "./initialize.js";
 import { hookConfig, lifecycleHook, readHookInput } from "./lifecycle.js";
@@ -12,6 +12,7 @@ import {
   terminalText,
   verificationMarkdown,
 } from "./render.js";
+import { gitContext, reportMarkdown, verificationReport } from "./report.js";
 import {
   InputError,
   identifier,
@@ -19,7 +20,7 @@ import {
   parseManifest,
   timestamp,
 } from "./validation.js";
-import { explain, snapshot, verify } from "./verifier.js";
+import { checkProject, explain, snapshot, verify } from "./verifier.js";
 
 const help = `Handoff Check
 
@@ -36,12 +37,15 @@ Options:
   --handoff <path>      Handoff file (default: handoff.json)
   --scope <scope>       Selected scope, including global constraints
   --config <path>       Project config (default: cwd/.handoff-check.json)
+  --profile <name>      Explicit config v2 profile; no scope/input overrides
+  --report              verify: exact input/config metadata (json/markdown only)
+  --git-context         verify --report: collect read-only Git context explicitly
   --as-of <UTC time>    Fixed evaluation time (default: current time)
-  --require-content    verify: require a v2/v3 content-aware handoff
+  --require-content    verify: require a v2/v3/v4 content-aware handoff
   --require-active     verify: fail if empty; hook/hook-config: opt-in nonempty policy
   --task <task>        snapshot: task description (required)
   --output <path>      snapshot: create a new baseline file, never overwrite
-  --include-content    snapshot: retain old rule text in a v3 handoff (opt-in)
+  --include-content    snapshot: retain old rule text in unbound v3/bound v4 (opt-in)
   --format text|json|markdown  Markdown is verify/explain-only (default: text)
   --agent <agent>      init: codex, claude, both (default), or none
   --host <host>        doctor: integration target; hook/hook-config: claude
@@ -78,6 +82,9 @@ async function main(): Promise<number> {
         "require-active": { type: "boolean" },
         "include-content": { type: "boolean" },
         host: { type: "string" },
+        profile: { type: "string" },
+        report: { type: "boolean" },
+        "git-context": { type: "boolean" },
         task: { type: "string" },
         output: { type: "string" },
       },
@@ -110,13 +117,45 @@ async function main(): Promise<number> {
       );
     const cwd = process.cwd();
     const command = positionals[0];
+    if (values.profile !== undefined) {
+      identifier(values.profile, "--profile");
+      if (command === "init")
+        throw new InputError(
+          "--profile is not supported by init; author config v2 explicitly",
+        );
+      if (
+        [values.scope, values.constraints, values.handoff].some(
+          (v) => v !== undefined,
+        )
+      )
+        throw new InputError(
+          "--profile cannot be combined with --scope, --constraints or --handoff",
+        );
+    }
+    if (
+      (values.report !== undefined || values["git-context"] !== undefined) &&
+      command !== "verify"
+    )
+      throw new InputError("--report and --git-context are verify-only");
+    if (values["git-context"] && !values.report)
+      throw new InputError("--git-context requires --report");
+    if (values.report && format === "text")
+      throw new InputError("--report requires --format json or markdown");
     if (["doctor", "hook", "hook-config"].includes(command ?? "")) {
       const allowed =
         command === "doctor"
-          ? ["host", "config", "scope", "constraints", "handoff", "format"]
+          ? [
+              "host",
+              "config",
+              "scope",
+              "constraints",
+              "handoff",
+              "format",
+              "profile",
+            ]
           : command === "hook"
-            ? ["host", "config", "require-active"]
-            : ["host", "require-active"];
+            ? ["host", "config", "require-active", "profile"]
+            : ["host", "require-active", "profile"];
       for (const key of Object.keys(values)) {
         if (
           key === "format" &&
@@ -156,7 +195,7 @@ async function main(): Promise<number> {
         );
       if (command === "hook-config") {
         process.stdout.write(
-          `${JSON.stringify(hookConfig(values.host, values["require-active"] ?? false), null, 2)}\n`,
+          `${JSON.stringify(hookConfig(values.host, values["require-active"] ?? false, values.profile), null, 2)}\n`,
         );
         return 0;
       }
@@ -175,6 +214,7 @@ async function main(): Promise<number> {
           event,
           values.config,
           values["require-active"] ?? false,
+          values.profile,
         );
         process.stdout.write(`${JSON.stringify(result)}\n`);
         return 0;
@@ -252,7 +292,9 @@ async function main(): Promise<number> {
       throw new InputError(
         "--agent, --dry-run and --ci are only supported by init",
       );
-    const { config, directory } = await loadConfig(cwd, values.config);
+    const loaded = await loadConfig(cwd, values.config);
+    const config = selectProfile(loaded.config, values.profile);
+    const directory = loaded.directory;
     const scope = identifier(
       values.scope ?? config.scope,
       "--scope (or config.scope)",
@@ -262,13 +304,13 @@ async function main(): Promise<number> {
     for (const key of ["constraints", "handoff", "config"] as const)
       if (values[key] !== undefined && !values[key].trim())
         throw new InputError(`--${key}: expected a non-empty path`);
-    const manifest = parseManifest(
-      await readJson(
-        values.constraints !== undefined
-          ? resolve(cwd, values.constraints)
-          : resolve(directory, config.constraints ?? "constraints.json"),
-      ),
+    const manifestRecord = await readJsonRecord(
+      values.constraints !== undefined
+        ? resolve(cwd, values.constraints)
+        : resolve(directory, config.constraints ?? "constraints.json"),
     );
+    const manifest = parseManifest(manifestRecord.input);
+    checkProject(manifest, undefined, config.projectId);
     if (command === "explain") {
       const result = explain(manifest, scope, asOf);
       process.stdout.write(
@@ -291,6 +333,9 @@ async function main(): Promise<number> {
         throw new InputError("snapshot requires --task");
       const captured = snapshot(manifest, values.task, scope, asOf, {
         includeContent: values["include-content"] ?? false,
+        ...(config.projectId === undefined
+          ? {}
+          : { projectId: config.projectId }),
       });
       const content = `${JSON.stringify(captured, null, 2)}\n`;
       if (values.output === undefined) process.stdout.write(content);
@@ -329,22 +374,43 @@ async function main(): Promise<number> {
       throw new InputError(
         "--task and --output are only supported by snapshot",
       );
-    const handoff = parseHandoff(
-      await readJson(
-        values.handoff !== undefined
-          ? resolve(cwd, values.handoff)
-          : resolve(directory, config.handoff ?? "handoff.json"),
-      ),
+    const handoffRecord = await readJsonRecord(
+      values.handoff !== undefined
+        ? resolve(cwd, values.handoff)
+        : resolve(directory, config.handoff ?? "handoff.json"),
     );
+    const handoff = parseHandoff(handoffRecord.input);
     if (values["require-content"] && handoff.schemaVersion === 1)
       throw new InputError(
-        "Content tracking requires a schemaVersion 2 or 3 handoff; review current rules and capture a snapshot before resuming",
+        "Content tracking requires a schemaVersion 2, 3 or 4 handoff; review current rules and capture a snapshot before resuming",
       );
     const result = verify(manifest, handoff, scope, asOf, {
       requireActive: values["require-active"] ?? false,
+      ...(config.projectId === undefined
+        ? {}
+        : { projectId: config.projectId }),
     });
+    const report = values.report
+      ? verificationReport(
+          result,
+          {
+            manifest: {
+              path: manifestRecord.path,
+              sha256: manifestRecord.sha256,
+            },
+            handoff: { path: handoffRecord.path, sha256: handoffRecord.sha256 },
+            config: loaded.source ?? null,
+          },
+          {
+            requireContent: values["require-content"] ?? false,
+            requireActive: values["require-active"] ?? false,
+          },
+          values.profile,
+          values["git-context"] ? await gitContext(cwd) : undefined,
+        )
+      : undefined;
     if (format === "json") {
-      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      process.stdout.write(`${JSON.stringify(report ?? result, null, 2)}\n`);
     } else if (format === "markdown") {
       process.stdout.write(
         verificationMarkdown(
@@ -352,7 +418,7 @@ async function main(): Promise<number> {
           handoff,
           values["require-active"] ?? false,
           values["require-content"] ?? false,
-        ),
+        ) + (report ? reportMarkdown(report) : ""),
       );
     } else {
       for (const finding of result.findings) {
@@ -379,7 +445,7 @@ async function main(): Promise<number> {
             : "PASS"
           : "FAIL";
       process.stdout.write(
-        `${label}  ${count} active constraints checked | ${result.findings.length} findings | scope ${scope} | as of ${result.asOf}${handoff.schemaVersion === 1 ? " | IDs only; content changes not checked" : " | content tracked"}${count === 0 ? " | No active constraints apply to this scope and time" : ""}\n`,
+        `${label}  ${count} active constraints checked | ${result.findings.length} findings | scope ${scope} | as of ${result.asOf}${result.projectId === undefined ? "" : ` | project ${result.projectId}`}${handoff.schemaVersion === 1 ? " | IDs only; content changes not checked" : " | content tracked"}${count === 0 ? " | No active constraints apply to this scope and time" : ""}\n`,
       );
     }
     return result.status === "verified" ? 0 : 1;

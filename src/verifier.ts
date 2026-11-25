@@ -7,6 +7,8 @@ import type {
   Finding,
   Handoff,
   Manifest,
+  ProjectHashHandoff,
+  ProjectRetainedHandoff,
   RetainedHandoff,
   VerificationResult,
 } from "./contracts.js";
@@ -32,15 +34,48 @@ function inactive(
   return undefined;
 }
 
+/** Explicit portable binding, never inferred from repository paths or Git. */
+export function checkProject(
+  manifest: Manifest,
+  handoff?: Handoff,
+  expectedProjectId?: string,
+): string | undefined {
+  if (expectedProjectId !== undefined)
+    identifier(expectedProjectId, "projectId");
+  const boundManifest = manifest.schemaVersion === 3;
+  const boundHandoff = handoff?.schemaVersion === 4;
+  if (boundManifest || boundHandoff || expectedProjectId !== undefined) {
+    if (!boundManifest)
+      throw new InputError(
+        "Project binding requires a schemaVersion 3 manifest; migrate both inputs deliberately",
+      );
+    const projectId = identifier(manifest.projectId, "manifest.projectId");
+    if (expectedProjectId !== undefined && expectedProjectId !== projectId)
+      throw new InputError(
+        `Manifest project '${projectId}' does not match configured project '${expectedProjectId}'`,
+      );
+    if (
+      handoff !== undefined &&
+      (!boundHandoff || handoff.projectId !== projectId)
+    )
+      throw new InputError(
+        `Handoff must be schemaVersion 4 bound to project '${projectId}'; review the intended project's baseline`,
+      );
+    return projectId;
+  }
+  return undefined;
+}
+
 /** Inputs must be validated with parseManifest and parseHandoff first. */
 export function verify(
   manifest: Manifest,
   handoff: Handoff,
   scope: string,
   asOf: string,
-  options: { requireActive?: boolean } = {},
+  options: { requireActive?: boolean; projectId?: string } = {},
 ): VerificationResult {
   identifier(scope, "scope");
+  const projectId = checkProject(manifest, handoff, options.projectId);
   if (handoff.schemaVersion !== 1 && handoff.scope !== scope)
     throw new InputError(
       `Handoff scope '${handoff.scope}' does not match selected scope '${scope}'`,
@@ -63,7 +98,8 @@ export function verify(
   ).sort(compare);
   const reported = new Set(reportedConstraints);
   const retained = new Map(
-    handoff.schemaVersion === 3
+    handoff.schemaVersion === 3 ||
+      (handoff.schemaVersion === 4 && handoff.contentMode === "retained")
       ? handoff.activeConstraints.map((ref) => [ref.id, ref.content])
       : [],
   );
@@ -128,6 +164,7 @@ export function verify(
   );
   return {
     schemaVersion: handoff.schemaVersion,
+    ...(projectId === undefined ? {} : { projectId }),
     ...(handoff.schemaVersion !== 1
       ? {
           tracking: "content" as const,
@@ -149,45 +186,68 @@ export function snapshot(
   task: string,
   scope: string,
   asOf: string,
-  options?: { includeContent?: false },
-): ContentHandoff;
+  options?: { includeContent?: false; projectId?: string },
+): ContentHandoff | ProjectHashHandoff;
 export function snapshot(
   manifest: Manifest,
   task: string,
   scope: string,
   asOf: string,
-  options: { includeContent: true },
-): RetainedHandoff;
+  options: { includeContent: true; projectId?: string },
+): RetainedHandoff | ProjectRetainedHandoff;
 export function snapshot(
   manifest: Manifest,
   task: string,
   scope: string,
   asOf: string,
-  options: { includeContent?: boolean },
-): ContentHandoff | RetainedHandoff;
+  options: { includeContent?: boolean; projectId?: string },
+):
+  | ContentHandoff
+  | RetainedHandoff
+  | ProjectHashHandoff
+  | ProjectRetainedHandoff;
 export function snapshot(
   manifest: Manifest,
   task: string,
   scope: string,
   asOf: string,
-  options: { includeContent?: boolean } = {},
-): ContentHandoff | RetainedHandoff {
+  options: { includeContent?: boolean; projectId?: string } = {},
+):
+  | ContentHandoff
+  | RetainedHandoff
+  | ProjectHashHandoff
+  | ProjectRetainedHandoff {
   if (!task.trim()) throw new InputError("--task: expected a non-empty task");
-  const result = verify(
-    manifest,
-    { schemaVersion: 1, task, activeConstraints: [] },
-    scope,
-    asOf,
-  );
+  const projectId = checkProject(manifest, undefined, options.projectId);
+  const result = explain(manifest, scope, asOf);
   const byId = new Map(manifest.constraints.map((rule) => [rule.id, rule]));
   const base = {
     task,
     scope,
     capturedAt: result.asOf,
   };
-  const rules = result.expectedConstraints.map(
-    (id) => byId.get(id) as Constraint,
-  );
+  const rules = result.rules
+    .filter((rule) => rule.decision === "ACTIVE")
+    .map((rule) => byId.get(rule.id) as Constraint);
+  if (projectId !== undefined)
+    return options.includeContent
+      ? {
+          ...base,
+          schemaVersion: 4,
+          projectId,
+          contentMode: "retained",
+          activeConstraints: rules.map((rule) => ({
+            ...reference(rule),
+            content: retainedContent(rule),
+          })),
+        }
+      : {
+          ...base,
+          schemaVersion: 4,
+          projectId,
+          contentMode: "hashes",
+          activeConstraints: rules.map(reference),
+        };
   return options.includeContent
     ? {
         ...base,
@@ -234,6 +294,7 @@ export function explain(
   asOf: string,
 ): Explanation {
   identifier(scope, "scope");
+  const projectId = checkProject(manifest);
   const time = timestamp(asOf, "asOf");
   const rules = [...manifest.constraints]
     .sort((a, b) => compare(a.id, b.id))
@@ -269,6 +330,7 @@ export function explain(
     });
   return {
     schemaVersion: 1,
+    ...(projectId === undefined ? {} : { projectId }),
     scope,
     asOf: new Date(time).toISOString(),
     activeConstraintCount: rules.filter((rule) => rule.decision === "ACTIVE")

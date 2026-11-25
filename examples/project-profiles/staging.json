@@ -1,0 +1,20 @@
+{
+  "task": "Review staging work",
+  "scope": "staging",
+  "capturedAt": "2026-11-25T08:00:00.000Z",
+  "schemaVersion": 4,
+  "projectId": "sample-project",
+  "contentMode": "hashes",
+  "activeConstraints": [
+    {
+      "id": "G-01",
+      "revision": 1,
+      "contentHash": "sha256:1089aba265df09cd44941f1ffe9d6dee1c0da3c3e71da3ea389f4b1a2ccef37c"
+    },
+    {
+      "id": "S-01",
+      "revision": 1,
+      "contentHash": "sha256:a183ab89fb51c5442a12064cbd16fa69548c080d62c81c41d6b2b1839ce6927f"
+    }
+  ]
+}

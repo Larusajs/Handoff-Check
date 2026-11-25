@@ -100,7 +100,7 @@ test("dry run previews the actual instruction changes and writes nothing", async
   expect(
     data.files.find((file: { path: string }) => file.path === "AGENTS.md")
       .content,
-  ).toContain("npx --yes handoff-check@0.5.0");
+  ).toContain("npx --yes handoff-check@0.6.0");
   expect(await readdir(cwd)).toEqual([]);
 });
 
@@ -217,7 +217,7 @@ test("init honors safe custom paths and rejects invalid config and path overlap"
   expect((await run(cwd, ["init", "--agent", "none"])).code).toBe(0);
   expect((await run(cwd, ["verify"])).code).toBe(0);
   for (const config of [
-    { schemaVersion: 2 },
+    { schemaVersion: 3 },
     { schemaVersion: 1, scope: "staging", typo: true },
     { schemaVersion: 1, scope: "staging", constraints: "../outside.json" },
     { schemaVersion: 1, scope: "staging", constraints: ".handoff-check.json" },
@@ -244,7 +244,7 @@ test("scope and command-specific options are explicit", async () => {
   ])
     expect((await run(cwd, args)).code).toBe(2);
   expect(await readdir(cwd)).toEqual([]);
-  expect((await run(cwd, ["--version"])).stdout.trim()).toBe("0.5.0");
+  expect((await run(cwd, ["--version"])).stdout.trim()).toBe("0.6.0");
 });
 
 test("ancestor and case-alias overlaps reject both preview and apply before writes", async () => {

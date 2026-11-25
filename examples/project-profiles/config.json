@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "projectId": "sample-project",
+  "constraints": "constraints.json",
+  "profiles": {
+    "stage": {
+      "scope": "staging",
+      "handoff": "staging.json"
+    },
+    "prod": {
+      "scope": "production",
+      "handoff": "production.json"
+    }
+  }
+}

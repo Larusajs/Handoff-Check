@@ -77,7 +77,7 @@ test("config schema and runtime agree on project options", () => {
     expect(() => parseConfig(value)).not.toThrow();
   }
   for (const value of [
-    { schemaVersion: 2 },
+    { schemaVersion: 3 },
     { schemaVersion: 1, unknown: true },
     { schemaVersion: 1, scope: "staging\n" },
     { schemaVersion: 1, handoff: " " },

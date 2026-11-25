@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Handoff Check reproducibility report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "packageVersion",
+    "policies",
+    "inputs",
+    "result",
+    "notice"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "verification-report"
+    },
+    "packageVersion": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])"
+    },
+    "profile": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])"
+    },
+    "policies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requireContent", "requireActive"],
+      "properties": {
+        "requireContent": {
+          "type": "boolean"
+        },
+        "requireActive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "handoff", "config"],
+      "properties": {
+        "manifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        },
+        "handoff": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        },
+        "config": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "sha256"],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["worktree", "commit", "branch"],
+      "properties": {
+        "worktree": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40,64}$"
+        },
+        "branch": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "description": "Existing versioned verifier result; its semantics remain governed by verifier contracts.",
+      "required": [
+        "schemaVersion",
+        "status",
+        "scope",
+        "asOf",
+        "expectedConstraints",
+        "reportedConstraints",
+        "findings"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "enum": [1, 2, 3, 4]
+        },
+        "status": {
+          "enum": ["verified", "mismatch"]
+        },
+        "scope": {
+          "type": "string"
+        },
+        "asOf": {
+          "type": "string"
+        },
+        "expectedConstraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reportedConstraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "notice": {
+      "type": "string"
+    }
+  }
+}
