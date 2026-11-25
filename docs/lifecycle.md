@@ -1,13 +1,13 @@
 # Installation diagnostics and lifecycle checks
 
-Requires Handoff Check 0.5.0+ and Node.js 22+. Checks run locally without model
+Requires Handoff Check 0.6.0+ and Node.js 22+. Checks run locally without model
 calls, source fetches, API keys or transcript access.
 
 ## Diagnose the intended repository/worktree root
 
 ```sh
-npx handoff-check@0.5.0 doctor --format json
-npx handoff-check@0.5.0 doctor --host claude
+npx handoff-check@0.6.0 doctor --format json
+npx handoff-check@0.6.0 doctor --host claude
 ```
 
 Doctor reports resolved input paths/versions, managed integrations/pins and
@@ -22,10 +22,10 @@ host settings and effective trust are not comprehensively inspected.
 
 1. Initialize/review inputs and deliberately adopt a content-aware baseline.
 2. Install the exact package in the consuming project. For npm:
-   `npm install --save-dev --save-exact handoff-check@0.5.0`. Installation uses
+   `npm install --save-dev --save-exact handoff-check@0.6.0`. Installation uses
    the registry; the hook later uses only this local package. Temporary npx caches
    and global installs do not meet that prerequisite.
-3. Run `npx handoff-check@0.5.0 hook-config --host claude` and inspect the JSON.
+3. Run `npx handoff-check@0.6.0 hook-config --host claude` and inspect the JSON.
 4. In an editor, merge the returned SessionStart entries into the existing
    `.claude/settings.json` hooks object. Preserve other events, handlers,
    permissions and settings. Do not replace the whole file or blindly redirect
@@ -40,7 +40,7 @@ worktree needs its own local package/config and correct host project root.
 Payload cwd must canonicalize inside the explicit config directory; subdirectories
 are allowed, other worktrees are rejected. No upward discovery occurs.
 
-The adapter requires v2/v3 content tracking and uses the current clock. Generate
+The adapter requires v2/v3/v4 content tracking and uses the current clock. Generate
 with `hook-config --host claude --require-active` only when explicitly requiring
 a nonempty active set. Neither mode writes/captures a baseline.
 

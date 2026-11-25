@@ -46,7 +46,7 @@ report. Keep ordinary task summaries separate from the declared constraint IDs.
 
 ## Content-aware handoffs
 
-Report the active-rule count as well as findings. V2/v3 JSON exposes
+Report the active-rule count as well as findings. V2/v3/v4 JSON exposes
 `activeConstraintCount`; legacy JSON exposes `expectedConstraints.length`.
 A zero count is not evidence that real active rules were checked. It may mean a
 starter, another scope, or only inactive rules. Text marks this as PASS (EMPTY)
@@ -54,8 +54,8 @@ when there are no mismatches. If the project explicitly requires a nonempty set,
 add `--require-active`: zero then produces global NO_ACTIVE_CONSTRAINTS and exit 1.
 Do not enable this policy silently or invent rules to satisfy it.
 
-Use schemaVersion 2 or 3 handoffs with revision/hash references. `CHANGED` means a
-carried active rule has a different revision or content hash. V3 findings include
+Use schemaVersion 2/3 unbound or 4 project-bound handoffs with revision/hash references. `CHANGED` means a
+carried active rule has a different revision or content hash. Retained v3/v4 findings include
 typed field-level `changes` from saved to current values; null means an absent
 optional field. V2 stores hashes only, so previous text is unavailable. Report
 expected/reported values and available changes, then review the current rule.
@@ -80,9 +80,9 @@ a v2 manifest can maintain explicit revisions. Hashes catch content edits even i
 the revision was not incremented.
 
 Only when old-content retention is explicitly chosen, add `--include-content` to
-snapshot. This creates a v3 handoff containing full descriptions, sources and
+snapshot. This creates an unbound v3 or project-bound v4 retained handoff containing full descriptions, sources and
 lifecycle values; consider sensitive content before committing or sharing it.
-Default snapshots remain v2. Do not silently upgrade existing files or enable
+Unbound snapshots default to v2; bound manifests create v4. Do not silently upgrade existing files or enable
 retention. Older CLI versions cannot read v3; upgrade affected consumers first.
 
 On resume, verify the saved baseline FIRST. Never run snapshot automatically to
@@ -104,3 +104,18 @@ success and may contain FAIL or NOT VERIFIED. Re-run verify for details and
 immediately before critical actions; startup context is not authorization or a
 blocking guarantee. Codex/Cursor adapters are not shipped in 0.5; invoke the CLI
 explicitly there.
+
+## Explicit project and environment context
+
+When config v2 profiles are used, select the user/workflow's explicit --profile;
+do not infer one from a branch/directory. Do not combine it with scope/input-path
+overrides. Bound manifest v3/handoff v4 must match projectId and selected scope;
+do not edit identity or downgrade binding merely to obtain a pass. Upgrade all
+consumers and verify/review the old baseline before deliberately migrating both
+inputs. Existing unbound files remain supported.
+
+Use verify --report --format json or markdown only when reproducibility metadata
+is requested. It wraps the result with package/policy/profile/input digests;
+--git-context separately opts into Git reads. A report is not authenticated proof
+of compliance or authorization. Never redirect reports onto input/config files.
+Doctor and the advisory Claude hook support the same explicit profile selection.
