@@ -75,6 +75,24 @@ jobs:
             test "$VERIFY_EXIT" -eq 1
           fi
           node -e 'const r=require("./retained-change.json");if(r.schemaVersion!==3||r.findings[0].changes[0].field!=="description"||r.findings[0].changes[0].before!=="Review migrations"||r.findings[0].changes[0].after!=="Require two reviewers")process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check snapshot --task "Review changed rules" --include-content --output handoff.after.json
+          if npx --yes --offline --package="$PACKAGE" handoff-check diff --before handoff.retained.json --after handoff.after.json --format json > snapshot-diff.json; then
+            echo "Expected snapshot differences"
+            exit 1
+          else
+            DIFF_EXIT=$?
+            test "$DIFF_EXIT" -eq 1
+          fi
+          node -e 'const r=require("./snapshot-diff.json");if(r.schemaVersion!==1||r.status!=="different"||r.changes[0].fields[0].field!=="description"||r.beforeCount!==1||r.afterCount!==1)process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check diff --before handoff.after.json --after handoff.after.json --format markdown > unchanged-diff.md
+          if npx --yes --offline --package="$PACKAGE" handoff-check setup > setup.out 2> setup.err; then
+            echo "Expected noninteractive setup rejection"
+            exit 1
+          else
+            SETUP_EXIT=$?
+            test "$SETUP_EXIT" -eq 2
+          fi
+          node -e 'if(!require("node:fs").readFileSync("setup.err","utf8").includes("interactive terminal"))process.exit(1)'
           node -e 'const fs=require("node:fs");fs.writeFileSync("constraints.bound.json",JSON.stringify({schemaVersion:3,projectId:"ci-project",constraints:[{id:"B-01",revision:1,scope:"staging",description:"Review bound work",source:"synthetic:ci"}]}));fs.writeFileSync(".handoff-check.json",JSON.stringify({schemaVersion:2,projectId:"ci-project",profiles:{stage:{scope:"staging",constraints:"constraints.bound.json",handoff:"handoff.bound.json"}}}))'
           npx --yes --offline --package="$PACKAGE" handoff-check snapshot --profile stage --task "Review project baseline" --output handoff.bound.json
           npx --yes --offline --package="$PACKAGE" handoff-check verify --profile stage --require-content --report --format json > bound-report.json
