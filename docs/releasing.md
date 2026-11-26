@@ -1,7 +1,7 @@
 # Releasing
 
 The npm package name is `handoff-check`; the binary is `handoff-check` and the
-current version is 0.7.0. The package is already published; subsequent releases
+current version is 0.8.0. The package is already published; subsequent releases
 use the configured trusted publisher and the reviewed-artifact process below.
 
 ## Release a reviewed version
@@ -19,12 +19,12 @@ use the configured trusted publisher and the reviewed-artifact process below.
    publish-run artifact and compare it before claiming artifact continuity.
    For first-publication bootstrap or an explicitly chosen manual release, use
    `npm login` and publish the reviewed tarball directly with
-   `npm publish /absolute/path/handoff-check-0.7.0.tgz --ignore-scripts --access public`.
+   `npm publish /absolute/path/handoff-check-0.8.0.tgz --ignore-scripts --access public`.
    Complete interactive two-factor authentication directly with npm.
 5. Verify registry name, version, binary and integrity, then test
-   `npx --yes handoff-check@0.7.0 --version` and fresh-project init/verify using a
+   `npx --yes handoff-check@0.8.0 --version` and fresh-project init/verify using a
    new package cache and the public registry, rather than the local tarball.
-6. Create tag `v0.7.0` and a GitHub release on the reviewed main commit, attach the
+6. Create tag `v0.8.0` and a GitHub release on the reviewed main commit, attach the
    same tarball, and describe features, requirements and known limits.
 
 Publishing is immutable for a given npm name/version. Fix failed candidates on a

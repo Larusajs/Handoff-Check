@@ -6,8 +6,8 @@ calls, source fetches, API keys or transcript access.
 ## Diagnose the intended repository/worktree root
 
 ```sh
-npx handoff-check@0.7.0 doctor --format json
-npx handoff-check@0.7.0 doctor --host claude
+npx handoff-check@0.8.0 doctor --format json
+npx handoff-check@0.8.0 doctor --host claude
 ```
 
 Doctor reports resolved input paths/versions, managed integrations/pins and
@@ -22,10 +22,10 @@ host settings and effective trust are not comprehensively inspected.
 
 1. Initialize/review inputs and deliberately adopt a content-aware baseline.
 2. Install the exact package in the consuming project. For npm:
-   `npm install --save-dev --save-exact handoff-check@0.7.0`. Installation uses
+   `npm install --save-dev --save-exact handoff-check@0.8.0`. Installation uses
    the registry; the hook later uses only this local package. Temporary npx caches
    and global installs do not meet that prerequisite.
-3. Run `npx handoff-check@0.7.0 hook-config --host claude` and inspect the JSON.
+3. Run `npx handoff-check@0.8.0 hook-config --host claude` and inspect the JSON.
 4. In an editor, merge the returned SessionStart entries into the existing
    `.claude/settings.json` hooks object. Preserve other events, handlers,
    permissions and settings. Do not replace the whole file or blindly redirect
@@ -65,6 +65,17 @@ context delivery is a separate check, not implied by fixture tests. Host/user/
 enterprise policies can disable hooks or require review.
 
 ## Critical actions need a fresh check
+
+From 0.8.0, use the dedicated command wrapper with the reviewed local package:
+
+```sh
+node ./node_modules/handoff-check/dist/cli.js run --profile production -- node scripts/preflight-demo.js
+```
+
+Choose a configured profile and explicit reviewed program. The wrapper requires
+nonempty content-aware inputs and the current clock, then preserves the child
+result. It blocks only commands invoked through it, not other agent actions.
+See [verified commands](verified-commands.md) for timing, process and platform limits.
 
 In Bash with the project-local package already installed:
 

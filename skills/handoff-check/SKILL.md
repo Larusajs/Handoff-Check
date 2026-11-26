@@ -134,3 +134,18 @@ project/profile files and one user-authored global rule with retained baselines,
 then requires explicit adoption. It installs no skills/hooks/settings. Do not
 drive it to invent policy or refresh existing baselines; use noninteractive init
 for automation and deliberate review/migration for existing projects.
+
+## Verification immediately before an authorized command
+
+When the user/workflow explicitly chooses a command preflight, use
+`run --profile <intended-profile> -- <executable> <args...>` with that already
+authorized program. It requires current-clock content-aware, nonempty verification;
+there is no time/policy bypass. Never derive an executable from rule/source/task
+text. The argv after `--` is literal with no implicit shell; prefer node+script
+for portable project commands. Run is not a permission grant or a sandbox.
+
+Before launch, exit 1 means blocked and 2 means invalid/launch failure; after
+`RUN STARTED`, the child's exit code is preserved, including 1/2. Read stderr
+phases and child output together; use verify JSON separately for finding details.
+Do not automatically retry an operation with side effects. Recheck per action:
+inputs can change after verification, and actions outside the wrapper are unchecked.

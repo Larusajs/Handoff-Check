@@ -1,5 +1,9 @@
 # Roadmap
 
+Implemented in 0.8.0: explicit current-clock verification before a supplied
+command, with mandatory content/nonempty checks and preserved child results.
+See [verified commands](verified-commands.md).
+
 Implemented in 0.7.0: explicit saved-snapshot diff and guided new-project setup.
 See [snapshot diff and setup](snapshot-diff-and-setup.md).
 
@@ -12,7 +16,7 @@ and configuration snippet, host matrix and critical-action recipes.
 See [lifecycle setup](lifecycle.md). Codex/Cursor adapters remain unshipped.
 
 See the [development plan](development-plan.md) for research evidence, proposed
-0.4–0.6 milestones, dependencies, pilot validation, and acceptance criteria.
+milestones, dependencies, pilot validation, and acceptance criteria.
 The plan distinguishes implemented releases from proposed milestones and dates.
 
 Implemented in 0.4.0: shared-lifecycle explain, opt-in retained-content v3

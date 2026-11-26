@@ -35,6 +35,13 @@ lifecycle inference. Setup authors new bound files from explicit answers using
 the existing parsers and snapshot core, previews exact bytes, and creates files
 exclusively only after adoption. Existing init remains stable. See ADR 0007.
 
+Run is an opt-in CLI process adapter: it reads regular local inputs through the
+same selectors/parsers, requires current-clock content/nonempty verification,
+then spawns explicit argv with shell false only on success. Child stdio/cwd/env
+are inherited and exit codes preserved. It never expands the pure verifier into
+an execution engine. See ADR 0008 for cancellation, time-of-check/time-of-use and
+platform limits; the supplied program's side effects are outside verification.
+
 Exit codes: 0 for verified IDs, 1 for rule mismatches, 2 for invalid input or an
 unreadable input file. JSON output is intended for agent adapters and automation.
 
