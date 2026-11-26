@@ -5,7 +5,7 @@
 With Node.js 22 or newer, run in the intended project root:
 
 ```sh
-npx handoff-check@0.8.0 setup
+npx handoff-check@0.9.0 setup
 ```
 
 Enter a portable project ID, comma-separated environments, a rule ID, a real rule
@@ -31,7 +31,7 @@ For environments `staging,production`, setup creates `.handoff-check.json`,
 is no default profile. Choose the intended environment explicitly:
 
 ```sh
-npx handoff-check@0.8.0 verify --profile staging --require-content --require-active
+npx handoff-check@0.9.0 verify --profile staging --require-content --require-active
 ```
 
 Add environment-specific rules later through deliberate review and capture;
@@ -44,9 +44,9 @@ portable skill. Do not use setup as a migration or baseline-repair command.
 ## Compare two saved snapshots
 
 ```sh
-npx handoff-check@0.8.0 diff --before handoff.saved.json --after handoff.next.json
-npx handoff-check@0.8.0 diff --before handoff.saved.json --after handoff.next.json --format json
-npx handoff-check@0.8.0 diff --before handoff.saved.json --after handoff.next.json --format markdown
+npx handoff-check@0.9.0 diff --before handoff.saved.json --after handoff.next.json
+npx handoff-check@0.9.0 diff --before handoff.saved.json --after handoff.next.json --format json
+npx handoff-check@0.9.0 diff --before handoff.saved.json --after handoff.next.json --format markdown
 ```
 
 Both operands are strictly validated handoff files. Unbound v2/v3 can be compared

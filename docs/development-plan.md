@@ -1,6 +1,6 @@
 # Development plan
 
-Status: milestones through 0.8 are implemented; later milestones remain proposed.
+Status: milestones through 0.9 are implemented; later milestones remain proposed.
 Research reviewed: 2026-11-24. Version labels below are targets, not release promises.
 
 ## Product direction
@@ -143,18 +143,24 @@ successful launch inherits process context and preserves results. It is not a
 sandbox, permission grant, atomic transaction or enforcement outside the wrapper.
 See [usage and limits](verified-commands.md). Existing contracts remain compatible.
 
-## 0.9 candidate: rule maintenance, gated by pilot demand
+## 0.9: rule ownership and review maintenance (implemented)
+
+Implemented under [ADR 0009](decisions/0009-independent-rule-review-maintenance.md):
+an independent reference-bound registry, explicit review-record capture and review
+reports. Review deadlines never deactivate constraints or alter verify/run/hooks.
+See [usage](rule-reviews.md). No human identity/time authentication, implicit
+notifications, baseline refresh or automatic registry merge. Pilot evidence and
+real-world maintenance measurements remain future work.
+
+## Later: source and relationship maintenance, gated by pilot demand
 
 Priority: medium. Keep source inspection separate from normal verify semantics.
 
 - Explore explicit local source bindings and a separate read-only source-check
   command. A referenced file edit can signal review needed; it does not prove the
   rule's meaning changed. Decide full-file versus section binding deliberately.
-- Consider owner/review-by metadata. Overdue review is distinct from rule expiry;
-  it must not silently deactivate a restriction.
-- Decide whether review metadata belongs in a separate versioned registry or a
-  new content contract before implementation. Keep existing canonical hashes and
-  baseline meaning stable; provide migration and independent maintenance output.
+- Ownership/review-by shipped in 0.9 in a separate registry. Revisit team-specific
+  policies only with pilot demand, keeping overdue review distinct from expiry.
 - Consider explicitly declared relationships such as conflicts/requires. Validate
   these deterministically; defer free-text contradiction inference.
 

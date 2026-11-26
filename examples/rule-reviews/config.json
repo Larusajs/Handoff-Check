@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "projectId": "review-demo",
+  "constraints": "constraints.json",
+  "profiles": {
+    "stage": { "scope": "staging" },
+    "prod": { "scope": "production" }
+  }
+}
