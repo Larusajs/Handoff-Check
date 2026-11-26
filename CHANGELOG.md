@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0
+
+- Add independent review registries with rule owners, review windows and exact revision/hash references.
+- Add review reports for missing, stale, future, overdue and orphan review metadata using existing active-rule selection.
+- Add explicit review-record capture to stdout or exclusive new files after deliberate rule review.
+- Share project/profile/path semantics without reading or refreshing handoff baselines.
+- Publish registry/result schemas, synthetic fixtures and migration-free maintenance guidance.
+- Keep old manifests, canonical hashes, verify/run and advisory lifecycle policy unchanged; review deadlines never deactivate constraints.
+
 ## 0.8.0
 
 - Add run to verify current content-aware, nonempty constraints before starting an explicit command.

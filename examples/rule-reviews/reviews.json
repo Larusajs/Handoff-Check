@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "projectId": "review-demo",
+  "rules": [
+    {
+      "id": "G-01",
+      "revision": 1,
+      "contentHash": "sha256:5ce323472413c1d2e932615aaed992ea565dec9833ea022ec92fb13fc37f8f5c",
+      "owner": "platform-team",
+      "reviewedAt": "2026-11-26T08:00:00.000Z",
+      "reviewBy": "2026-11-27T08:00:00.000Z"
+    },
+    {
+      "id": "S-01",
+      "revision": 1,
+      "contentHash": "sha256:8f2041c107968fcd3933003541a6cc0dcd6ac67c0005dbd743dd266840af34bb",
+      "owner": "platform-team",
+      "reviewedAt": "2026-11-26T08:00:00.000Z",
+      "reviewBy": "2026-11-27T08:00:00.000Z"
+    }
+  ]
+}

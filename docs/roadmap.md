@@ -1,5 +1,9 @@
 # Roadmap
 
+Implemented in 0.9.0: independent rule ownership/review windows and reference-bound
+maintenance reports, without changing verification policy.
+See [rule reviews](rule-reviews.md).
+
 Implemented in 0.8.0: explicit current-clock verification before a supplied
 command, with mandatory content/nonempty checks and preserved child results.
 See [verified commands](verified-commands.md).

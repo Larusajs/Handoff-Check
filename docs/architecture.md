@@ -42,6 +42,12 @@ are inherited and exit codes preserved. It never expands the pure verifier into
 an execution engine. See ADR 0008 for cancellation, time-of-check/time-of-use and
 platform limits; the supplied program's side effects are outside verification.
 
+Review maintenance is independent of verification. A strict separate registry
+binds ownership/deadlines to existing rule references; review reuses explain's
+active selection and never modifies applicability. Review-record explicitly
+captures selected active references without merging or refreshing handoffs.
+Neither verify/run nor lifecycle/doctor load the registry. See ADR 0009.
+
 Exit codes: 0 for verified IDs, 1 for rule mismatches, 2 for invalid input or an
 unreadable input file. JSON output is intended for agent adapters and automation.
 
