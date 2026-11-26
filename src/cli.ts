@@ -14,6 +14,7 @@ import {
   verificationMarkdown,
 } from "./render.js";
 import { gitContext, reportMarkdown, verificationReport } from "./report.js";
+import { reviewCommand } from "./review-cli.js";
 import { runVerified } from "./run.js";
 import { guidedSetup } from "./setup.js";
 import {
@@ -28,6 +29,8 @@ import { checkProject, explain, snapshot, verify } from "./verifier.js";
 const help = `Handoff Check
 
 Usage: handoff-check verify --scope <scope> [options]
+       handoff-check review --registry <review-file> [--profile <name>] [--format text|json|markdown]
+       handoff-check review-record --owner <owner> --review-by <UTC time> [--output <new-file>] [options]
        handoff-check run [--profile <name> | --scope <scope>] [--config <path>] -- <executable> [args...]
        handoff-check diff --before <snapshot> --after <snapshot> [--format text|json|markdown]
        handoff-check setup [--dry-run]
@@ -39,6 +42,9 @@ Usage: handoff-check verify --scope <scope> [options]
        handoff-check hook --host claude --config <absolute-path> [--require-active]
 
 Options:
+  --registry <path>     review: explicit review registry (resolved from cwd)
+  --owner <owner>       review-record: owner of explicitly reviewed active rules
+  --review-by <UTC>     review-record: review deadline, later than capture time
   --before <path>       diff: saved snapshot before the change
   --after <path>        diff: saved snapshot after the change
   --constraints <path>  Manifest file (default: constraints.json)
@@ -52,9 +58,9 @@ Options:
   --require-content    verify: require a v2/v3/v4 content-aware handoff
   --require-active     verify: fail if empty; hook/hook-config: opt-in nonempty policy
   --task <task>        snapshot: task description (required)
-  --output <path>      snapshot: create a new baseline file, never overwrite
+  --output <path>      snapshot/review-record: create a new file, never overwrite
   --include-content    snapshot: retain old rule text in unbound v3/bound v4 (opt-in)
-  --format text|json|markdown  Markdown is verify/explain/diff-only (default: text)
+  --format text|json|markdown  Markdown is verify/explain/diff/review-only (default: text)
   --agent <agent>      init: codex, claude, both (default), or none
   --host <host>        doctor: integration target; hook/hook-config: claude
   --dry-run            init/setup: preview proposed files without writes
@@ -63,6 +69,7 @@ Options:
   --help               Show this help
 
 Exit codes: verify 0 verified / 1 mismatch; diff 0 unchanged / 1 different; doctor 0 healthy / 1 attention.
+Review: 0 current maintenance / 1 attention (including zero active); never changes verify/run policy.
 Run: mandatory content/nonempty/current-clock preflight; 1 blocked / 2 invalid or launch error.
 After launch run returns the child exit code (or 128 + signal); diagnostics use stderr.
 Hook 0 means advisory response delivered (may report FAIL/INVALID), not verified.
@@ -104,6 +111,9 @@ async function main(): Promise<number> {
         output: { type: "string" },
         before: { type: "string" },
         after: { type: "string" },
+        registry: { type: "string" },
+        owner: { type: "string" },
+        "review-by": { type: "string" },
       },
     });
     format = values.format;
@@ -130,13 +140,40 @@ async function main(): Promise<number> {
         "diff",
         "setup",
         "run",
+        "review",
+        "review-record",
       ].includes(positionals[0] ?? "")
     )
       throw new InputError(
-        "Expected command: verify, snapshot, explain, init, setup, diff, run, doctor, hook or hook-config (use --help for usage)",
+        "Expected command: verify, snapshot, explain, init, setup, diff, run, review, review-record, doctor, hook or hook-config (use --help for usage)",
       );
     const cwd = process.cwd();
     const command = positionals[0];
+    if (command === "review" || command === "review-record") {
+      const allowed = [
+        "config",
+        "profile",
+        "scope",
+        "constraints",
+        "as-of",
+        "format",
+        ...(command === "review"
+          ? ["registry"]
+          : ["owner", "review-by", "output"]),
+      ];
+      for (const key of Object.keys(values))
+        if (!allowed.includes(key))
+          throw new InputError(`--${key} is not supported by ${command}`);
+      return await reviewCommand(cwd, command, values);
+    }
+    if (
+      values.registry !== undefined ||
+      values.owner !== undefined ||
+      values["review-by"] !== undefined
+    )
+      throw new InputError(
+        "--registry, --owner and --review-by are review/review-record-only",
+      );
     if (command === "run") {
       if (!runCommand || separator < 0)
         throw new InputError(
