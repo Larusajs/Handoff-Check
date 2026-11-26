@@ -49,6 +49,16 @@ jobs:
           npx --yes --offline --package="$PACKAGE" handoff-check snapshot --task "Resume migrations" --output handoff.next.json
           npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.next.json --require-content --require-active --format json > active-result.json
           node -e 'const r=require("./active-result.json");if(r.status!=="verified"||r.activeConstraintCount!==1)process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check review-record --owner ci-team --review-by 2021-01-01T00:00:00Z --as-of 2020-01-01T00:00:00Z --output rules.review.json
+          npx --yes --offline --package="$PACKAGE" handoff-check review --registry rules.review.json --as-of 2020-01-01T00:00:00Z --format json > review-current.json
+          node -e 'const r=require("./review-current.json");if(r.kind!=="rule-review"||r.status!=="current"||r.currentReviewCount!==1||r.rules[0].owner!=="ci-team")process.exit(1)'
+          if npx --yes --offline --package="$PACKAGE" handoff-check review --registry rules.review.json --as-of 2021-01-01T00:00:00Z --format markdown > review-overdue.md; then
+            echo "Expected overdue maintenance attention"
+            exit 1
+          else
+            REVIEW_EXIT=$?
+            test "$REVIEW_EXIT" -eq 1
+          fi
           npx --yes --offline --package="$PACKAGE" handoff-check run --handoff handoff.next.json -- node -e 'process.stdout.write(JSON.stringify(process.argv.slice(1)))' -- 'two words' '$literal' ';not-shell' > run-argv.json 2> run-diagnostics.txt
           node -e 'const fs=require("node:fs"),r=require("./run-argv.json");if(JSON.stringify(r)!==JSON.stringify(["two words","$literal",";not-shell"])||!fs.readFileSync("run-diagnostics.txt","utf8").includes("RUN EXIT: 0"))process.exit(1)'
           if npx --yes --offline --package="$PACKAGE" handoff-check run --handoff handoff.next.json -- node -e 'process.exit(42)' > run-child.out 2> run-child.err; then
@@ -76,6 +86,14 @@ jobs:
             test "$VERIFY_EXIT" -eq 1
           fi
           node -e 'const r=require("./changed.json");if(r.findings.length!==1||r.findings[0].code!=="CHANGED")process.exit(1)'
+          if npx --yes --offline --package="$PACKAGE" handoff-check review --registry rules.review.json --as-of 2020-01-01T00:00:00Z --format json > review-stale.json; then
+            echo "Expected changed-rule review to be stale"
+            exit 1
+          else
+            REVIEW_EXIT=$?
+            test "$REVIEW_EXIT" -eq 1
+          fi
+          node -e 'const r=require("./review-stale.json");if(r.rules[0].status!=="STALE_REVIEW"||r.currentReviewCount!==0)process.exit(1)'
           if npx --yes --offline --package="$PACKAGE" handoff-check run --handoff handoff.next.json -- node -e 'require("node:fs").writeFileSync("MUST-NOT-START","bad")' > run-blocked.out 2> run-blocked.err; then
             echo "Expected changed-rule preflight rejection"
             exit 1
