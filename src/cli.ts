@@ -14,6 +14,7 @@ import {
   verificationMarkdown,
 } from "./render.js";
 import { gitContext, reportMarkdown, verificationReport } from "./report.js";
+import { runVerified } from "./run.js";
 import { guidedSetup } from "./setup.js";
 import {
   InputError,
@@ -27,6 +28,7 @@ import { checkProject, explain, snapshot, verify } from "./verifier.js";
 const help = `Handoff Check
 
 Usage: handoff-check verify --scope <scope> [options]
+       handoff-check run [--profile <name> | --scope <scope>] [--config <path>] -- <executable> [args...]
        handoff-check diff --before <snapshot> --after <snapshot> [--format text|json|markdown]
        handoff-check setup [--dry-run]
        handoff-check init --scope <scope> [--agent both] [--dry-run] [--ci]
@@ -61,6 +63,8 @@ Options:
   --help               Show this help
 
 Exit codes: verify 0 verified / 1 mismatch; diff 0 unchanged / 1 different; doctor 0 healthy / 1 attention.
+Run: mandatory content/nonempty/current-clock preflight; 1 blocked / 2 invalid or launch error.
+After launch run returns the child exit code (or 128 + signal); diagnostics use stderr.
 Hook 0 means advisory response delivered (may report FAIL/INVALID), not verified.
 Invalid invocation/input returns 2; explain/init/snapshot/hook-config succeed with 0.
 `;
@@ -68,8 +72,13 @@ Invalid invocation/input returns 2; explain/init/snapshot/hook-config succeed wi
 async function main(): Promise<number> {
   let format = "text";
   try {
+    const rawArgs = process.argv.slice(2);
+    const runCommand = rawArgs[0] === "run";
+    const separator = rawArgs.indexOf("--");
+    const wrapperArgs =
+      runCommand && separator >= 0 ? rawArgs.slice(0, separator) : rawArgs;
     const { values, positionals } = parseArgs({
-      args: process.argv.slice(2),
+      args: wrapperArgs,
       allowPositionals: true,
       strict: true,
       options: {
@@ -120,13 +129,35 @@ async function main(): Promise<number> {
         "hook-config",
         "diff",
         "setup",
+        "run",
       ].includes(positionals[0] ?? "")
     )
       throw new InputError(
-        "Expected command: verify, snapshot, explain, init, setup, diff, doctor, hook or hook-config (use --help for usage)",
+        "Expected command: verify, snapshot, explain, init, setup, diff, run, doctor, hook or hook-config (use --help for usage)",
       );
     const cwd = process.cwd();
     const command = positionals[0];
+    if (command === "run") {
+      if (!runCommand || separator < 0)
+        throw new InputError(
+          "Use run as the first argument and include -- <executable> [arguments...]",
+        );
+      const allowed = ["config", "profile", "scope", "constraints", "handoff"];
+      for (const key of Object.keys(values)) {
+        if (
+          key === "format" &&
+          !wrapperArgs.some(
+            (arg) => arg === "--format" || arg.startsWith("--format="),
+          )
+        )
+          continue;
+        if (!allowed.includes(key))
+          throw new InputError(
+            `--${key} is not supported by run; content/nonempty checks and the current clock are mandatory`,
+          );
+      }
+      return await runVerified(cwd, values, rawArgs.slice(separator + 1));
+    }
     if (command === "diff" || command === "setup") {
       const allowed =
         command === "diff" ? ["before", "after", "format"] : ["dry-run"];

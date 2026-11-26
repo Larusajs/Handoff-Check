@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { open, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { InputError, identifier } from "./validation.js";
 
@@ -38,10 +39,26 @@ export function digest(bytes: Uint8Array): string {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
 
-export async function readJsonRecord(path: string) {
+async function readBytes(path: string, regularOnly: boolean) {
+  if (!regularOnly) return readFile(path);
+  // Opening a FIFO in blocking mode can stall shutdown as well as the read.
+  const handle = await open(
+    path,
+    constants.O_RDONLY | (constants.O_NONBLOCK ?? 0),
+  );
+  try {
+    if (!(await handle.stat()).isFile())
+      throw new InputError(`Expected a regular input file: '${path}'`);
+    return await handle.readFile();
+  } finally {
+    await handle.close();
+  }
+}
+
+export async function readJsonRecord(path: string, regularOnly = false) {
   let bytes: Buffer;
   try {
-    bytes = await readFile(path);
+    bytes = await readBytes(path, regularOnly);
   } catch {
     throw new InputError(`Cannot read input file '${path}'`);
   }
@@ -54,8 +71,11 @@ export async function readJsonRecord(path: string) {
   return { input, path, sha256: digest(bytes) };
 }
 
-export async function readJson(path: string): Promise<unknown> {
-  return (await readJsonRecord(path)).input;
+export async function readJson(
+  path: string,
+  regularOnly = false,
+): Promise<unknown> {
+  return (await readJsonRecord(path, regularOnly)).input;
 }
 
 export function parseConfig(input: unknown): ProjectConfig {
@@ -129,6 +149,7 @@ export function parseConfig(input: unknown): ProjectConfig {
 export async function loadConfig(
   cwd: string,
   explicit?: string,
+  regularOnly = false,
 ): Promise<{
   config: ProjectConfig;
   directory: string;
@@ -137,7 +158,7 @@ export async function loadConfig(
   const path = resolve(cwd, explicit ?? ".handoff-check.json");
   let input: Buffer;
   try {
-    input = await readFile(path);
+    input = await readBytes(path, regularOnly);
   } catch (error) {
     if (
       explicit === undefined &&

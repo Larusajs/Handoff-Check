@@ -10,6 +10,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import metadata from "../package.json" with { type: "json" };
 
 const binary = resolve("dist/cli.js");
 const directories: string[] = [];
@@ -100,7 +101,7 @@ test("dry run previews the actual instruction changes and writes nothing", async
   expect(
     data.files.find((file: { path: string }) => file.path === "AGENTS.md")
       .content,
-  ).toContain("npx --yes handoff-check@0.7.0");
+  ).toContain(`npx --yes handoff-check@${metadata.version}`);
   expect(await readdir(cwd)).toEqual([]);
 });
 
@@ -244,7 +245,7 @@ test("scope and command-specific options are explicit", async () => {
   ])
     expect((await run(cwd, args)).code).toBe(2);
   expect(await readdir(cwd)).toEqual([]);
-  expect((await run(cwd, ["--version"])).stdout.trim()).toBe("0.7.0");
+  expect((await run(cwd, ["--version"])).stdout.trim()).toBe(metadata.version);
 });
 
 test("ancestor and case-alias overlaps reject both preview and apply before writes", async () => {
