@@ -1,7 +1,6 @@
 # Development plan
 
-Status: 0.3.1 onboarding, 0.4 explainability and 0.5 diagnostics/lifecycle implemented;
-0.6 project/profile/report support is also implemented; later milestones proposed.
+Status: milestones through 0.8 are implemented; later milestones remain proposed.
 Research reviewed: 2026-11-24. Version labels below are targets, not release promises.
 
 ## Product direction
@@ -135,7 +134,16 @@ and optional retained field details; terminal-only new-project setup with exact
 preview and affirmative adoption of one real global rule. Existing init/verify
 contracts stay unchanged. See [usage](snapshot-diff-and-setup.md).
 
-## Later: rule maintenance, gated by pilot demand
+## 0.8: fresh verification before critical commands (implemented)
+
+Implemented under [ADR 0008](decisions/0008-verified-command-runner.md): opt-in
+run wraps one explicit executable with current-clock content/nonempty checks
+using the existing verifier. Invalid/mismatched preflight never starts the child;
+successful launch inherits process context and preserves results. It is not a
+sandbox, permission grant, atomic transaction or enforcement outside the wrapper.
+See [usage and limits](verified-commands.md). Existing contracts remain compatible.
+
+## 0.9 candidate: rule maintenance, gated by pilot demand
 
 Priority: medium. Keep source inspection separate from normal verify semantics.
 
@@ -144,6 +152,9 @@ Priority: medium. Keep source inspection separate from normal verify semantics.
   rule's meaning changed. Decide full-file versus section binding deliberately.
 - Consider owner/review-by metadata. Overdue review is distinct from rule expiry;
   it must not silently deactivate a restriction.
+- Decide whether review metadata belongs in a separate versioned registry or a
+  new content contract before implementation. Keep existing canonical hashes and
+  baseline meaning stable; provide migration and independent maintenance output.
 - Consider explicitly declared relationships such as conflicts/requires. Validate
   these deterministically; defer free-text contradiction inference.
 

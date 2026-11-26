@@ -49,6 +49,15 @@ jobs:
           npx --yes --offline --package="$PACKAGE" handoff-check snapshot --task "Resume migrations" --output handoff.next.json
           npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.next.json --require-content --require-active --format json > active-result.json
           node -e 'const r=require("./active-result.json");if(r.status!=="verified"||r.activeConstraintCount!==1)process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check run --handoff handoff.next.json -- node -e 'process.stdout.write(JSON.stringify(process.argv.slice(1)))' -- 'two words' '$literal' ';not-shell' > run-argv.json 2> run-diagnostics.txt
+          node -e 'const fs=require("node:fs"),r=require("./run-argv.json");if(JSON.stringify(r)!==JSON.stringify(["two words","$literal",";not-shell"])||!fs.readFileSync("run-diagnostics.txt","utf8").includes("RUN EXIT: 0"))process.exit(1)'
+          if npx --yes --offline --package="$PACKAGE" handoff-check run --handoff handoff.next.json -- node -e 'process.exit(42)' > run-child.out 2> run-child.err; then
+            echo "Expected child exit code propagation"
+            exit 1
+          else
+            RUN_EXIT=$?
+            test "$RUN_EXIT" -eq 42
+          fi
           npx --yes --offline --package="$PACKAGE" handoff-check doctor --format json > doctor.json
           node -e 'const r=require("./doctor.json");if(r.status!=="healthy"||r.paths.constraints!==require("node:path").resolve("constraints.json"))process.exit(1)'
           npx --yes --offline --package="$PACKAGE" handoff-check hook-config --host claude > hook-config.json
@@ -67,6 +76,14 @@ jobs:
             test "$VERIFY_EXIT" -eq 1
           fi
           node -e 'const r=require("./changed.json");if(r.findings.length!==1||r.findings[0].code!=="CHANGED")process.exit(1)'
+          if npx --yes --offline --package="$PACKAGE" handoff-check run --handoff handoff.next.json -- node -e 'require("node:fs").writeFileSync("MUST-NOT-START","bad")' > run-blocked.out 2> run-blocked.err; then
+            echo "Expected changed-rule preflight rejection"
+            exit 1
+          else
+            RUN_EXIT=$?
+            test "$RUN_EXIT" -eq 1
+          fi
+          node -e 'const fs=require("node:fs");if(fs.existsSync("MUST-NOT-START")||fs.readFileSync("run-blocked.out","utf8")!==""||!fs.readFileSync("run-blocked.err","utf8").includes("RUN BLOCKED CHANGED"))process.exit(1)'
           if npx --yes --offline --package="$PACKAGE" handoff-check verify --handoff handoff.retained.json --require-content --format json > retained-change.json; then
             echo "Expected retained baseline content change to fail"
             exit 1

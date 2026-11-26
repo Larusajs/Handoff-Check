@@ -56,10 +56,10 @@ Author `.handoff-check.json` as config v2:
 ```
 
 ```sh
-npx handoff-check@0.7.0 explain --profile stage
-npx handoff-check@0.7.0 snapshot --profile stage --task "Review staging work" --output handoffs/staging.reviewed.json
-npx handoff-check@0.7.0 verify --profile stage --require-content
-npx handoff-check@0.7.0 doctor --profile stage
+npx handoff-check@0.8.0 explain --profile stage
+npx handoff-check@0.8.0 snapshot --profile stage --task "Review staging work" --output handoffs/staging.reviewed.json
+npx handoff-check@0.8.0 verify --profile stage --require-content
+npx handoff-check@0.8.0 doctor --profile stage
 ```
 
 These assume you deliberately adopted a baseline at the configured handoff path;
@@ -83,8 +83,8 @@ bindings produce NOT VERIFIED context; hook transport success is not a pass.
 ## Record exactly what was checked
 
 ```sh
-npx handoff-check@0.7.0 verify --profile stage --require-content --report --format json
-npx handoff-check@0.7.0 verify --profile stage --require-content --report --git-context --format markdown
+npx handoff-check@0.8.0 verify --profile stage --require-content --report --format json
+npx handoff-check@0.8.0 verify --profile stage --require-content --report --git-context --format markdown
 ```
 
 --report is optional and verify-only. It adds package version, requested policies,

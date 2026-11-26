@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0
+
+- Add run to verify current content-aware, nonempty constraints before starting an explicit command.
+- Preserve config/profile/project/scope selection using the existing pure verifier.
+- Require an explicit argv separator, pass arguments without an implicit shell, and inherit process streams/cwd/environment.
+- Keep wrapper diagnostics on stderr and preserve child exit codes with direct-child signal forwarding.
+- Refuse nonregular run inputs and bound stalled asynchronous preflight reads without limiting command runtime.
+- Preserve existing verify, snapshot, setup, diff and lifecycle contracts; never refresh baselines automatically.
+
 ## 0.7.0
 
 - Add explicit two-snapshot diff with added, removed, changed and unchanged counts.
