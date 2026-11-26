@@ -1,5 +1,8 @@
 # Roadmap
 
+Implemented in 0.7.0: explicit saved-snapshot diff and guided new-project setup.
+See [snapshot diff and setup](snapshot-diff-and-setup.md).
+
 Implemented in 0.6.0: opt-in portable project IDs, explicit environment profiles,
 and verification metadata reports with separately requested Git context.
 See [project/profile/report guide](project-context.md).

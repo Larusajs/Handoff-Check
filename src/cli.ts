@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import metadata from "../package.json" with { type: "json" };
 import { loadConfig, readJsonRecord, selectProfile } from "./config.js";
+import { diffSnapshots, diffText } from "./diff.js";
 import { doctor } from "./doctor.js";
 import { initialize } from "./initialize.js";
 import { hookConfig, lifecycleHook, readHookInput } from "./lifecycle.js";
@@ -13,6 +14,7 @@ import {
   verificationMarkdown,
 } from "./render.js";
 import { gitContext, reportMarkdown, verificationReport } from "./report.js";
+import { guidedSetup } from "./setup.js";
 import {
   InputError,
   identifier,
@@ -25,6 +27,8 @@ import { checkProject, explain, snapshot, verify } from "./verifier.js";
 const help = `Handoff Check
 
 Usage: handoff-check verify --scope <scope> [options]
+       handoff-check diff --before <snapshot> --after <snapshot> [--format text|json|markdown]
+       handoff-check setup [--dry-run]
        handoff-check init --scope <scope> [--agent both] [--dry-run] [--ci]
        handoff-check snapshot --task <task> [--output <new-file>] [options]
        handoff-check explain --scope <scope> [options]
@@ -33,6 +37,8 @@ Usage: handoff-check verify --scope <scope> [options]
        handoff-check hook --host claude --config <absolute-path> [--require-active]
 
 Options:
+  --before <path>       diff: saved snapshot before the change
+  --after <path>        diff: saved snapshot after the change
   --constraints <path>  Manifest file (default: constraints.json)
   --handoff <path>      Handoff file (default: handoff.json)
   --scope <scope>       Selected scope, including global constraints
@@ -46,15 +52,15 @@ Options:
   --task <task>        snapshot: task description (required)
   --output <path>      snapshot: create a new baseline file, never overwrite
   --include-content    snapshot: retain old rule text in unbound v3/bound v4 (opt-in)
-  --format text|json|markdown  Markdown is verify/explain-only (default: text)
+  --format text|json|markdown  Markdown is verify/explain/diff-only (default: text)
   --agent <agent>      init: codex, claude, both (default), or none
   --host <host>        doctor: integration target; hook/hook-config: claude
-  --dry-run            init: preview files and instruction changes without writes
+  --dry-run            init/setup: preview proposed files without writes
   --ci                 init: also create a pinned GitHub Actions check
   --version            Show package version
   --help               Show this help
 
-Exit codes: verify 0 verified / 1 mismatch; doctor 0 healthy / 1 attention.
+Exit codes: verify 0 verified / 1 mismatch; diff 0 unchanged / 1 different; doctor 0 healthy / 1 attention.
 Hook 0 means advisory response delivered (may report FAIL/INVALID), not verified.
 Invalid invocation/input returns 2; explain/init/snapshot/hook-config succeed with 0.
 `;
@@ -87,6 +93,8 @@ async function main(): Promise<number> {
         "git-context": { type: "boolean" },
         task: { type: "string" },
         output: { type: "string" },
+        before: { type: "string" },
+        after: { type: "string" },
       },
     });
     format = values.format;
@@ -110,13 +118,54 @@ async function main(): Promise<number> {
         "doctor",
         "hook",
         "hook-config",
+        "diff",
+        "setup",
       ].includes(positionals[0] ?? "")
     )
       throw new InputError(
-        "Expected command: verify, snapshot, explain, init, doctor, hook or hook-config (use --help for usage)",
+        "Expected command: verify, snapshot, explain, init, setup, diff, doctor, hook or hook-config (use --help for usage)",
       );
     const cwd = process.cwd();
     const command = positionals[0];
+    if (command === "diff" || command === "setup") {
+      const allowed =
+        command === "diff" ? ["before", "after", "format"] : ["dry-run"];
+      for (const key of Object.keys(values)) {
+        if (
+          key === "format" &&
+          values.format === "text" &&
+          !process.argv
+            .slice(2)
+            .some((arg) => arg === "--format" || arg.startsWith("--format="))
+        )
+          continue;
+        if (!allowed.includes(key))
+          throw new InputError(`--${key} is not supported by ${command}`);
+      }
+      if (command === "setup") {
+        await guidedSetup(cwd, values["dry-run"] ?? false);
+        return 0;
+      }
+      if (!values.before?.trim() || !values.after?.trim())
+        throw new InputError(
+          "diff requires --before <snapshot> and --after <snapshot>",
+        );
+      const before = parseHandoff(
+        (await readJsonRecord(resolve(cwd, values.before))).input,
+      );
+      const after = parseHandoff(
+        (await readJsonRecord(resolve(cwd, values.after))).input,
+      );
+      const result = diffSnapshots(before, after);
+      process.stdout.write(
+        format === "json"
+          ? `${JSON.stringify(result, null, 2)}\n`
+          : diffText(result, format === "markdown"),
+      );
+      return result.status === "unchanged" ? 0 : 1;
+    }
+    if (values.before !== undefined || values.after !== undefined)
+      throw new InputError("--before and --after are diff-only");
     if (values.profile !== undefined) {
       identifier(values.profile, "--profile");
       if (command === "init")

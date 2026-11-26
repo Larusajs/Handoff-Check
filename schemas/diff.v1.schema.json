@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Larusajs/Handoff-Check/schemas/diff.v1.schema.json",
+  "title": "Handoff Check snapshot diff v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "scope",
+    "beforeCount",
+    "afterCount",
+    "unchangedCount",
+    "changes",
+    "notice"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "status": { "enum": ["unchanged", "different"] },
+    "scope": { "$ref": "#/$defs/identifier" },
+    "projectId": { "$ref": "#/$defs/identifier" },
+    "beforeCount": { "type": "integer", "minimum": 0 },
+    "afterCount": { "type": "integer", "minimum": 0 },
+    "unchangedCount": { "type": "integer", "minimum": 0 },
+    "notice": { "type": "string" },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "before", "after"],
+        "properties": {
+          "id": { "$ref": "#/$defs/identifier" },
+          "kind": { "enum": ["ADDED", "REMOVED", "CHANGED"] },
+          "before": {
+            "oneOf": [{ "$ref": "#/$defs/reference" }, { "type": "null" }]
+          },
+          "after": {
+            "oneOf": [{ "$ref": "#/$defs/reference" }, { "type": "null" }]
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["field", "before", "after"],
+              "properties": {
+                "field": {
+                  "enum": [
+                    "id",
+                    "scope",
+                    "description",
+                    "source",
+                    "expiresAt",
+                    "revokedAt",
+                    "replacedBy",
+                    "supersededAt",
+                    "revision"
+                  ]
+                },
+                "before": { "type": ["string", "number", "null"] },
+                "after": { "type": ["string", "number", "null"] }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "kind": { "const": "ADDED" } } },
+            "then": {
+              "properties": {
+                "before": { "type": "null" },
+                "after": { "$ref": "#/$defs/reference" }
+              },
+              "not": { "required": ["fields"] }
+            }
+          },
+          {
+            "if": { "properties": { "kind": { "const": "REMOVED" } } },
+            "then": {
+              "properties": {
+                "before": { "$ref": "#/$defs/reference" },
+                "after": { "type": "null" }
+              },
+              "not": { "required": ["fields"] }
+            }
+          },
+          {
+            "if": { "properties": { "kind": { "const": "CHANGED" } } },
+            "then": {
+              "properties": {
+                "before": { "$ref": "#/$defs/reference" },
+                "after": { "$ref": "#/$defs/reference" }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])"
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "contentHash"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "contentHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      }
+    }
+  }
+}

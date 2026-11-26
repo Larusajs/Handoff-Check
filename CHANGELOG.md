@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0
+
+- Add explicit two-snapshot diff with added, removed, changed and unchanged counts.
+- Compare content-aware unbound v2/v3 and bound v4 snapshots with strict scope/project matching.
+- Show typed field differences when both snapshots retain content; preserve hash-only comparison.
+- Add terminal-only guided setup with explicit project/environments and a real global rule.
+- Preview exact new project-bound files and retained baselines before explicit adoption; refuse overwrites.
+- Preserve existing verification, init, profile and lifecycle contracts without automatic migration.
+
 ## 0.6.0
 
 - Add opt-in manifest v3/handoff v4 portable project binding with strict matching.

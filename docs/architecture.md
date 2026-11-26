@@ -30,6 +30,11 @@ then calls the same verifier. Hook-config prints a mergeable snippet, never writ
 host settings. Advisory host transport success is distinct from verification.
 See decisions/0005-local-diagnostics-and-lifecycle.md.
 
+Diff compares two validated saved handoffs without config, manifest, clock or
+lifecycle inference. Setup authors new bound files from explicit answers using
+the existing parsers and snapshot core, previews exact bytes, and creates files
+exclusively only after adoption. Existing init remains stable. See ADR 0007.
+
 Exit codes: 0 for verified IDs, 1 for rule mismatches, 2 for invalid input or an
 unreadable input file. JSON output is intended for agent adapters and automation.
 
