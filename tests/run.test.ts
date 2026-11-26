@@ -1,6 +1,13 @@
 import { expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseManifest } from "../src/validation.js";
@@ -103,8 +110,11 @@ test("run verifies active bound profile, inherits streams/cwd/env and preserves 
       "hello stdin",
     );
     expect(result.code).toBe(0);
-    expect(JSON.parse(result.out)).toEqual({
-      cwd: await import("node:fs/promises").then((fs) => fs.realpath(cwd)),
+    const output = JSON.parse(result.out);
+    // Windows may report the same directory through its short-name alias.
+    output.cwd = await realpath(output.cwd);
+    expect(output).toEqual({
+      cwd: await realpath(cwd),
       env: "inherited",
       input: "hello stdin",
     });
