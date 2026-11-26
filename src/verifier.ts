@@ -272,7 +272,7 @@ const fields = [
   "revision",
 ] as const;
 
-function fieldChanges(
+export function fieldChanges(
   previous: Constraint,
   current: Constraint,
 ): FieldChange[] {
