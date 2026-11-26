@@ -127,6 +127,14 @@ Acceptance:
 - Reports are described as local records, not authenticated attestations or proof
   of agent compliance. Revalidate changed inputs rather than trusting old reports.
 
+## 0.7: visible changes and first meaningful check (implemented)
+
+Implemented under [ADR 0007](decisions/0007-snapshot-diff-and-guided-setup.md):
+explicit two-snapshot diff with strict scope/project matching, hash-based changes
+and optional retained field details; terminal-only new-project setup with exact
+preview and affirmative adoption of one real global rule. Existing init/verify
+contracts stay unchanged. See [usage](snapshot-diff-and-setup.md).
+
 ## Later: rule maintenance, gated by pilot demand
 
 Priority: medium. Keep source inspection separate from normal verify semantics.

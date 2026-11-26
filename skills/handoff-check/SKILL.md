@@ -119,3 +119,18 @@ is requested. It wraps the result with package/policy/profile/input digests;
 --git-context separately opts into Git reads. A report is not authenticated proof
 of compliance or authorization. Never redirect reports onto input/config files.
 Doctor and the advisory Claude hook support the same explicit profile selection.
+
+## Saved snapshot comparison and first setup
+
+Use `diff --before <saved.json> --after <next.json> --format json` only to compare
+two explicitly selected content-aware snapshots of the same scope/project.
+Exit 0 means unchanged declarations, 1 means differences, 2 means invalid inputs.
+Field details require retained content on both sides. Diff does not evaluate
+current applicability, inspect agent memory, or replace verify on resume. Never
+capture a new baseline merely to clear a diff or assume the later operand is newer.
+
+`setup` is an interactive human onboarding flow for new projects. It previews
+project/profile files and one user-authored global rule with retained baselines,
+then requires explicit adoption. It installs no skills/hooks/settings. Do not
+drive it to invent policy or refresh existing baselines; use noninteractive init
+for automation and deliberate review/migration for existing projects.
