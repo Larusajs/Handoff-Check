@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "projectId": "source-demo",
+  "bindings": [
+    { "id": "G-01", "path": "policy.md" },
+    { "id": "S-01", "path": "policy.md" },
+    { "id": "P-01", "path": "policy.md" }
+  ]
+}

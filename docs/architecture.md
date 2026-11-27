@@ -48,6 +48,12 @@ active selection and never modifies applicability. Review-record explicitly
 captures selected active references without merging or refreshing handoffs.
 Neither verify/run nor lifecycle/doctor load the registry. See ADR 0009.
 
+Source inspection is another explicit adapter. Pure source selection/checking
+accepts CLI-supplied observations; only the filesystem adapter resolves declared
+local bindings and streams bounded raw-byte hashes. Independent plan/registry/
+result schemas preserve existing rule hashes and policy. Default commands do not
+read these files. See ADR 0010 for path, byte, race and OS/platform limits.
+
 Exit codes: 0 for verified IDs, 1 for rule mismatches, 2 for invalid input or an
 unreadable input file. JSON output is intended for agent adapters and automation.
 

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "projectId": "source-demo",
+  "capturedAt": "2026-11-27T08:00:00.000Z",
+  "sources": [
+    {
+      "id": "G-01",
+      "path": "policy.md",
+      "revision": 1,
+      "contentHash": "sha256:cd05c3572849d61eb0d47112ce96d6cd45891ed298f343b6835091f408ff41bf",
+      "fileHash": "sha256:6911d23420ff7f9a48bce1afed5b3f828315bacf573b977996b6c62664547206"
+    },
+    {
+      "id": "S-01",
+      "path": "policy.md",
+      "revision": 1,
+      "contentHash": "sha256:fc1a72f7aa701886aa423037a3c4a22d8a455d2aa98dbcbabf6d04d53a17aab6",
+      "fileHash": "sha256:6911d23420ff7f9a48bce1afed5b3f828315bacf573b977996b6c62664547206"
+    }
+  ]
+}

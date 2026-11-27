@@ -1,5 +1,8 @@
 # Roadmap
 
+Implemented in 0.10.0: opt-in explicit local source bindings and bounded whole-file
+change checks independent of verification. See [local sources](local-sources.md).
+
 Implemented in 0.9.0: independent rule ownership/review windows and reference-bound
 maintenance reports, without changing verification policy.
 See [rule reviews](rule-reviews.md).
