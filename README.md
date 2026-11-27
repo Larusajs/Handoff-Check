@@ -3,7 +3,7 @@
 A deterministic, local CLI that verifies active constraints before a coding agent
 resumes work.
 
-**Version: 0.9.0.**
+**Version: 0.10.0.**
 
 A task summary may preserve the goal while losing an active rule, carrying an
 expired restriction, or moving a staging-only instruction into production.
@@ -18,8 +18,8 @@ Source references are review metadata and are never fetched.
 Run in the repository where your agent works:
 
 ```sh
-npx handoff-check@0.9.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.9.0 init --scope staging --agent both
+npx handoff-check@0.10.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.10.0 init --scope staging --agent both
 ```
 
 This creates `.handoff-check.json`, starter `constraints.json` and `handoff.json`,
@@ -33,7 +33,7 @@ on verification. Revisions and hashes detect edits under an unchanged rule ID.
 Ask a resuming agent to use the installed skill, or run:
 
 ```sh
-npx handoff-check@0.9.0 verify --format json --require-content
+npx handoff-check@0.10.0 verify --format json --require-content
 ```
 
 The saved config supplies paths and scope. `init --ci` also creates a pinned GitHub
@@ -42,7 +42,7 @@ agent execution; CI enforces the declared-ID comparison when its workflow runs.
 Neither checks whether the agent obeys a rule's meaning.
 
 Node.js 22+ is required; end users do not need Bun. Global installation is also
-available: `npm install --global handoff-check@0.9.0`. For contributor builds or
+available: `npm install --global handoff-check@0.10.0`. For contributor builds or
 offline package testing, see the [setup guide](docs/agent-integration.md).
 
 For a complete first-rule walkthrough, including a passing baseline and a detected
@@ -65,7 +65,7 @@ default but are explicitly marked. Unexpected reported IDs still fail.
 To require actual active rules, opt in:
 
 ```sh
-npx handoff-check@0.9.0 verify --require-content --require-active --format json
+npx handoff-check@0.10.0 verify --require-content --require-active --format json
 ```
 
 A zero active set produces global NO_ACTIVE_CONSTRAINTS (no fake ID), mismatch
@@ -83,8 +83,8 @@ init and snapshot reject it. See the
 After reviewing rules at handoff creation, capture a new baseline:
 
 ```sh
-npx handoff-check@0.9.0 snapshot --task "Resume migration review" --output handoff.next.json
-npx handoff-check@0.9.0 verify --handoff handoff.next.json --require-content --format json
+npx handoff-check@0.10.0 snapshot --task "Resume migration review" --output handoff.next.json
+npx handoff-check@0.10.0 verify --handoff handoff.next.json --require-content --format json
 ```
 
 Snapshot creates a new file exclusively. Review it before deliberately replacing
@@ -106,9 +106,9 @@ hashed, but referenced documents are not fetched or checked.
 ## Explain rules and review field changes
 
 ```sh
-npx handoff-check@0.9.0 explain --format markdown
-npx handoff-check@0.9.0 snapshot --task "Review migration" --include-content --output handoff.reviewed.json
-npx handoff-check@0.9.0 verify --handoff handoff.reviewed.json --require-content --format markdown
+npx handoff-check@0.10.0 explain --format markdown
+npx handoff-check@0.10.0 snapshot --task "Review migration" --include-content --output handoff.reviewed.json
+npx handoff-check@0.10.0 verify --handoff handoff.reviewed.json --require-content --format markdown
 ```
 
 `explain` shows every manifest rule's applicability for the selected scope/time,
@@ -153,10 +153,26 @@ or revisioned v2 manifests. Scope must match the v2 handoff's saved scope.
 Review current rules, capture a new v2 baseline, and deliberately update the saved
 handoff. Existing inputs are preserved by init, not silently upgraded. Review
 installed skills, instruction blocks and CI commands to update their pinned
-version to 0.9.0 and add `--require-content`. Init refuses to overwrite differing
+version to 0.10.0 and add `--require-content`. Init refuses to overwrite differing
 integrations; compare them with the new packaged templates and update reviewed
 copies explicitly. Never refresh before checking resumed work or reuse capturedAt
 as the clock for real resumed work.
+
+## Explicit local source changes
+
+Declare rule IDs and local paths in a binding plan, then record files only after
+reviewing them:
+
+```sh
+npx handoff-check@0.10.0 source-record --profile production --bindings source-bindings.json --output sources.next.json
+npx handoff-check@0.10.0 source-check --profile production --sources sources.next.json
+```
+
+Source-check compares whole-file raw bytes and flags changed, missing, unreadable,
+unsafe or oversized sources. A changed rule reference is stale before any source
+read. Bindings are explicit project-relative paths; URLs are never downloaded.
+Source text is not stored or displayed. Existing verify/run/review/hooks do not
+implicitly read sources or change policy. See [setup, schemas and limits](docs/local-sources.md).
 
 ## Rule ownership and review deadlines
 
@@ -164,8 +180,8 @@ After deliberately reviewing the applicable rules, record their ownership in a
 separate registry and check it independently:
 
 ```sh
-npx handoff-check@0.9.0 review-record --profile stage --owner platform-team --review-by 2027-01-01T00:00:00Z --output rules.review.next.json
-npx handoff-check@0.9.0 review --profile stage --registry rules.review.next.json
+npx handoff-check@0.10.0 review-record --profile stage --owner platform-team --review-by 2027-01-01T00:00:00Z --output rules.review.next.json
+npx handoff-check@0.10.0 review --profile stage --registry rules.review.next.json
 ```
 
 Choose the intended profile, owner and deadline; one owner/deadline applies to all
@@ -178,7 +194,7 @@ expire constraints or change verify/run/hooks. See [rule reviews](docs/rule-revi
 ## Verify before running a command
 
 ```sh
-npx handoff-check@0.9.0 run --profile production -- node scripts/preflight-demo.js
+npx handoff-check@0.10.0 run --profile production -- node scripts/preflight-demo.js
 ```
 
 Use the intended configured profile and an explicitly chosen program. `run`
@@ -192,7 +208,7 @@ after the check. See [verified commands](docs/verified-commands.md).
 
 ## Snapshot diff and guided setup
 
-Run `npx handoff-check@0.9.0 setup` in a terminal to create a new project-bound
+Run `npx handoff-check@0.10.0 setup` in a terminal to create a new project-bound
 configuration with explicit environments and one real rule you author. Review
 the exact retained baselines before typing `yes`; existing files are never replaced.
 No agent integrations or dependencies are installed. Use `--dry-run` to preview.
@@ -209,8 +225,8 @@ See [the guide](docs/snapshot-diff-and-setup.md).
 reproducibility metadata. Existing unbound files/default JSON stay compatible.
 
 ```sh
-npx handoff-check@0.9.0 verify --profile stage --require-content --report --format json
-npx handoff-check@0.9.0 doctor --profile stage
+npx handoff-check@0.10.0 verify --profile stage --require-content --report --format json
+npx handoff-check@0.10.0 doctor --profile stage
 ```
 
 These commands require an explicitly authored config v2 profile. Bound manifest
@@ -220,12 +236,12 @@ record the exact input/config bytes parsed, package version and policies; Git is
 read only with separate --git-context. They are not signed attestations or proof
 of compliance. See [setup, migration and examples](docs/project-context.md).
 
-For read-only installation diagnostics, run `npx handoff-check@0.9.0 doctor`.
+For read-only installation diagnostics, run `npx handoff-check@0.10.0 doctor`.
 `doctor --format json` reports paths, supported input versions and managed
 integration pins. Its exit codes are 0 healthy, 1 attention and 2 invalid invocation;
 it does not verify a handoff or prove a host ran the integration.
 
-`npx handoff-check@0.9.0 hook-config --host claude` emits an opt-in advisory
+`npx handoff-check@0.10.0 hook-config --host claude` emits an opt-in advisory
 SessionStart snippet to merge manually into existing settings. It never overwrites
 settings, and requires a pinned project-local package. The local adapter uses the
 same verifier without network/model calls; startup/resume/clear/compact checks
@@ -368,6 +384,14 @@ handoff-check diff --before <snapshot> --after <snapshot>
 
 handoff-check setup [--dry-run]
 
+handoff-check source-check --sources <source-registry>
+  [--config <path>] [--profile <name> | --scope <scope>] [--constraints <path>]
+  [--as-of <UTC time>] [--format text|json|markdown]
+
+handoff-check source-record --bindings <binding-plan>
+  [--config <path>] [--profile <name> | --scope <scope>] [--constraints <path>]
+  [--as-of <UTC time>] [--output <new-file>] [--format text|json]
+
 handoff-check review --registry <review-file>
   [--config <path>] [--profile <name> | --scope <scope>] [--constraints <path>]
   [--as-of <UTC time>] [--format text|json|markdown]
@@ -393,6 +417,7 @@ handoff-check hook --host claude --config <absolute-path> [--require-active]
 
 Verify/snapshot/explain/doctor/hook/hook-config/run accept explicit `--profile`;
 review and review-record also accept profiles without reading handoffs;
+source-check and source-record follow the same explicit selection;
 init does not. Profile selection rejects scope/input-path overrides, but permits
 --config. Verify-only --report requires JSON or Markdown; --git-context additionally
 requires --report and Git with an existing commit. No reports are saved automatically.
@@ -425,6 +450,12 @@ orphan IDs; 1 means maintenance attention (including zero active); 2 means inval
 Review-record succeeds with 0 or fails with 2. Its stdout record is JSON; --format
 controls the acknowledgement only when --output creates a new file. These commands
 never refresh saved handoffs or implicitly gate verify/run.
+
+Source-check returns 0 for unchanged active sources, 1 for attention (including
+unavailable sources/zero active) or 2 for invalid metadata/invocation. Source-record
+returns 0/2 and creates stdout JSON or a new exclusive output only. File paths root
+at the config directory, metadata CLI paths at cwd. No implicit source inspection,
+baseline refresh or registry merge occurs.
 
 Per-rule findings include `MISSING`, `EXPIRED`, `REVOKED`, `SUPERSEDED`, `OUT_OF_SCOPE`,
 `UNKNOWN`, and (for v2) `CHANGED`, ordered by ID. A reported ID receives one primary finding according to

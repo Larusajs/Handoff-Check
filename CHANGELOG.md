@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.0
+
+- Add explicit local source binding plans, raw-byte source registries and source-check reports.
+- Add source-record capture after deliberate review to stdout or exclusive new files.
+- Reuse rule/project/profile/lifecycle semantics and flag stale references before source I/O.
+- Report changed, missing, unreadable, unsafe and oversized files without exposing their contents.
+- Enforce portable contained paths, symlink/special-file rejection, 10 MiB streamed limits and 256-entry contracts.
+- Preserve existing canonical rule hashes and verify/run/review/doctor/lifecycle behavior without implicit source reads.
+
 ## 0.9.0
 
 - Add independent review registries with rule owners, review windows and exact revision/hash references.

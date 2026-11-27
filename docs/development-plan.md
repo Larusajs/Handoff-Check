@@ -1,6 +1,6 @@
 # Development plan
 
-Status: milestones through 0.9 are implemented; later milestones remain proposed.
+Status: milestones through 0.10 are implemented; later milestones remain proposed.
 Research reviewed: 2026-11-24. Version labels below are targets, not release promises.
 
 ## Product direction
@@ -152,13 +152,21 @@ See [usage](rule-reviews.md). No human identity/time authentication, implicit
 notifications, baseline refresh or automatic registry merge. Pilot evidence and
 real-world maintenance measurements remain future work.
 
-## Later: source and relationship maintenance, gated by pilot demand
+## 0.10: explicit local source changes (implemented)
+
+Implemented under [ADR 0010](decisions/0010-explicit-local-source-checks.md): explicit
+binding plans, source-record capture and source-check reports for bounded raw
+whole-file hashes. Rule/reference/project/lifecycle checks precede explicit file
+reads. No URL fetching, semantic diff, automatic refresh or implicit enforcement.
+See [usage and filesystem limits](local-sources.md). Section bindings and actual
+pilot measurements remain future work.
+
+## Later: relationship maintenance, gated by pilot demand
 
 Priority: medium. Keep source inspection separate from normal verify semantics.
 
-- Explore explicit local source bindings and a separate read-only source-check
-  command. A referenced file edit can signal review needed; it does not prove the
-  rule's meaning changed. Decide full-file versus section binding deliberately.
+- Whole-file source bindings shipped in 0.10. Consider section-level bindings only
+  with pilot demand and explicit versioned parsing/normalization semantics.
 - Ownership/review-by shipped in 0.9 in a separate registry. Revisit team-specific
   policies only with pilot demand, keeping overdue review distinct from expiry.
 - Consider explicitly declared relationships such as conflicts/requires. Validate

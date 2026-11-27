@@ -7,7 +7,7 @@ verifier as `verify`; the pure core and existing input formats are unchanged.
 With Node.js 22 or newer, use an existing reviewed project configuration:
 
 ```sh
-npx handoff-check@0.9.0 run --profile production -- node scripts/preflight-demo.js
+npx handoff-check@0.10.0 run --profile production -- node scripts/preflight-demo.js
 ```
 
 The profile is an example: select the intended configured profile, or use
@@ -89,7 +89,7 @@ failure diagnostics after launch do not reclassify it as a launch failure.
 In a disposable configured project with a reviewed active baseline:
 
 ```sh
-npx handoff-check@0.9.0 run --profile production -- node -e 'console.log("example command started")'
+npx handoff-check@0.10.0 run --profile production -- node -e 'console.log("example command started")'
 ```
 
 Edit a rule description in that disposable manifest without refreshing its saved

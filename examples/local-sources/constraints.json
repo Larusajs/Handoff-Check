@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "projectId": "source-demo",
+  "constraints": [
+    {
+      "id": "G-01",
+      "revision": 1,
+      "scope": "global",
+      "description": "Review the local policy before changing deployment routines",
+      "source": "policy.md"
+    },
+    {
+      "id": "S-01",
+      "revision": 1,
+      "scope": "staging",
+      "description": "Use synthetic records in staging",
+      "source": "policy.md"
+    },
+    {
+      "id": "P-01",
+      "revision": 1,
+      "scope": "production",
+      "description": "Obtain deployment review for production",
+      "source": "policy.md"
+    }
+  ]
+}

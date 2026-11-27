@@ -9,8 +9,8 @@ infers rules from a summary.
 From the consuming repository root:
 
 ```sh
-npx handoff-check@0.9.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.9.0 init --scope staging --agent both
+npx handoff-check@0.10.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.10.0 init --scope staging --agent both
 ```
 
 Choose `codex`, `claude`, `both` (default), or `none`. Generated integrations:
@@ -39,8 +39,8 @@ npm pack
 From a separate consuming project, substitute the actual absolute tarball path:
 
 ```sh
-npx --offline --yes --package=/absolute/path/handoff-check-0.9.0.tgz handoff-check init --scope staging --agent both
-npx --offline --yes --package=/absolute/path/handoff-check-0.9.0.tgz handoff-check verify --format json --require-content
+npx --offline --yes --package=/absolute/path/handoff-check-0.10.0.tgz handoff-check init --scope staging --agent both
+npx --offline --yes --package=/absolute/path/handoff-check-0.10.0.tgz handoff-check verify --format json --require-content
 ```
 
 Bun is not required for these consumer commands. Generated agent commands use the

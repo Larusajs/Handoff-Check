@@ -12,8 +12,8 @@ your normal process. Only after that review, explicitly record the selected
 scope's active rules (including global rules):
 
 ```sh
-npx handoff-check@0.9.0 explain --profile stage
-npx handoff-check@0.9.0 review-record --profile stage --owner platform-team --review-by 2027-01-01T00:00:00Z --output rules.review.next.json
+npx handoff-check@0.10.0 explain --profile stage
+npx handoff-check@0.10.0 review-record --profile stage --owner platform-team --review-by 2027-01-01T00:00:00Z --output rules.review.next.json
 ```
 
 The owner/deadline are examples. One owner and deadline apply to **every** active
@@ -40,9 +40,9 @@ maintenance finding. No-active-rules capture fails with exit 2.
 ## Check maintenance independently
 
 ```sh
-npx handoff-check@0.9.0 review --profile stage --registry rules.review.next.json
-npx handoff-check@0.9.0 review --profile stage --registry rules.review.next.json --format json
-npx handoff-check@0.9.0 review --profile stage --registry rules.review.next.json --format markdown
+npx handoff-check@0.10.0 review --profile stage --registry rules.review.next.json
+npx handoff-check@0.10.0 review --profile stage --registry rules.review.next.json --format json
+npx handoff-check@0.10.0 review --profile stage --registry rules.review.next.json --format markdown
 ```
 
 An explicit `--registry` path is required and resolves from cwd. `--config`
@@ -111,7 +111,7 @@ step and handle its exit code through that team's normal process.
 From a checkout, use the shipped fixtures:
 
 ```sh
-npx handoff-check@0.9.0 review --config examples/rule-reviews/config.json --profile stage --registry examples/rule-reviews/reviews.json --as-of 2026-11-26T08:00:00Z --format json
+npx handoff-check@0.10.0 review --config examples/rule-reviews/config.json --profile stage --registry examples/rule-reviews/reviews.json --as-of 2026-11-26T08:00:00Z --format json
 ```
 
 Expect current/exit 0 with two active rules. At `2026-11-27T08:00:00Z` expect two

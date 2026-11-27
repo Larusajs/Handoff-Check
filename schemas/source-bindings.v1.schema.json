@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "$id": "https://github.com/Larusajs/Handoff-Check/schemas/source-bindings.v1.schema.json",
+  "title": "Handoff Check source binding plan v1",
+  "required": ["schemaVersion", "bindings"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "projectId": {
+      "$ref": "#/$defs/identifier"
+    },
+    "bindings": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path"],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "path": {
+            "$ref": "#/$defs/sourcePath"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])"
+    },
+    "sourcePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "description": "Portable relative POSIX file path. Runtime additionally validates components/reserved names/containment and rejects symlinks."
+    }
+  }
+}
