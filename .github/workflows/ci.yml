@@ -52,6 +52,19 @@ jobs:
           npx --yes --offline --package="$PACKAGE" handoff-check review-record --owner ci-team --review-by 2021-01-01T00:00:00Z --as-of 2020-01-01T00:00:00Z --output rules.review.json
           npx --yes --offline --package="$PACKAGE" handoff-check review --registry rules.review.json --as-of 2020-01-01T00:00:00Z --format json > review-current.json
           node -e 'const r=require("./review-current.json");if(r.kind!=="rule-review"||r.status!=="current"||r.currentReviewCount!==1||r.rules[0].owner!=="ci-team")process.exit(1)'
+          node -e 'const fs=require("node:fs");fs.writeFileSync("policy.txt","reviewed synthetic policy\n");fs.writeFileSync("source-bindings.json",JSON.stringify({schemaVersion:1,bindings:[{id:"C-01",path:"policy.txt"}]}))'
+          npx --yes --offline --package="$PACKAGE" handoff-check source-record --bindings source-bindings.json --as-of 2020-01-01T00:00:00Z --output source-registry.json
+          npx --yes --offline --package="$PACKAGE" handoff-check source-check --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > sources-unchanged.json
+          node -e 'const r=require("./sources-unchanged.json");if(r.kind!=="source-check"||r.unchangedSourceCount!==1||r.rules[0].status!=="UNCHANGED")process.exit(1)'
+          node -e 'require("node:fs").writeFileSync("policy.txt","edited synthetic policy\n")'
+          if npx --yes --offline --package="$PACKAGE" handoff-check source-check --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > sources-changed.json; then
+            echo "Expected explicit source byte changes"
+            exit 1
+          else
+            SOURCE_EXIT=$?
+            test "$SOURCE_EXIT" -eq 1
+          fi
+          node -e 'const r=require("./sources-changed.json");if(r.rules[0].status!=="SOURCE_CHANGED"||r.unchangedSourceCount!==0)process.exit(1)'
           if npx --yes --offline --package="$PACKAGE" handoff-check review --registry rules.review.json --as-of 2021-01-01T00:00:00Z --format markdown > review-overdue.md; then
             echo "Expected overdue maintenance attention"
             exit 1
@@ -86,6 +99,14 @@ jobs:
             test "$VERIFY_EXIT" -eq 1
           fi
           node -e 'const r=require("./changed.json");if(r.findings.length!==1||r.findings[0].code!=="CHANGED")process.exit(1)'
+          if npx --yes --offline --package="$PACKAGE" handoff-check source-check --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > sources-stale.json; then
+            echo "Expected rule-edit source binding to become stale"
+            exit 1
+          else
+            SOURCE_EXIT=$?
+            test "$SOURCE_EXIT" -eq 1
+          fi
+          node -e 'const r=require("./sources-stale.json");if(r.rules[0].status!=="STALE_BINDING")process.exit(1)'
           if npx --yes --offline --package="$PACKAGE" handoff-check review --registry rules.review.json --as-of 2020-01-01T00:00:00Z --format json > review-stale.json; then
             echo "Expected changed-rule review to be stale"
             exit 1
