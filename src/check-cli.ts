@@ -6,13 +6,19 @@ import {
   type Section,
 } from "./check.js";
 import { loadConfig, readBytes, selectProfile } from "./config.js";
-import type { Handoff } from "./contracts.js";
+import type { Handoff, Manifest } from "./contracts.js";
 import { terminalText } from "./render.js";
-import { parseReviewRegistry, reviewRules } from "./review.js";
+import {
+  parseReviewRegistry,
+  type ReviewRegistry,
+  reviewRules,
+} from "./review.js";
 import { readSourceTargets } from "./source-files.js";
 import {
   checkSources,
   parseSourceRegistry,
+  type SourceObservation,
+  type SourceRegistry,
   sourceCheckTargets,
 } from "./sources.js";
 import {
@@ -24,7 +30,7 @@ import {
 } from "./validation.js";
 import { checkProject, explain, verify } from "./verifier.js";
 
-interface CheckOptions {
+export interface CheckOptions {
   config?: string;
   profile?: string;
   scope?: string;
@@ -35,7 +41,23 @@ interface CheckOptions {
   "as-of"?: string;
   format: string;
 }
-type ReadResult = { input: unknown } | { error: string };
+type Parsed<T> = { value: T } | { error: string };
+export interface PreparedCheck {
+  manifest: Manifest;
+  scope: string;
+  projectId?: string;
+  profile?: string;
+  selectionTime: string;
+  handoff: Parsed<Handoff>;
+  review?: Parsed<ReviewRegistry>;
+  sources?: Parsed<SourceRegistry>;
+  observations: ReadonlyMap<string, SourceObservation>;
+}
+export const checkDependencies = {
+  read: (path: string) => readBytes(path, true),
+  clock: () => new Date().toISOString(),
+  sources: readSourceTargets,
+};
 function diagnostic(error: unknown): string {
   return terminalText(
     error instanceof InputError
@@ -43,17 +65,19 @@ function diagnostic(error: unknown): string {
       : "Cannot complete selected check",
   ).slice(0, 512);
 }
-
-/** CLI-owned I/O; each resolved metadata pathname is observed once, including failures. */
-export async function combinedCheck(
+function parsed<T>(evaluate: () => T): Parsed<T> {
+  try {
+    return { value: evaluate() };
+  } catch (error) {
+    return { error: diagnostic(error) };
+  }
+}
+/** Read and parse each metadata role once; only preparation performs source I/O. */
+export async function prepareCheck(
   cwd: string,
   options: CheckOptions,
-  dependencies = {
-    read: (path: string) => readBytes(path, true),
-    clock: () => new Date().toISOString(),
-    sources: readSourceTargets,
-  },
-): Promise<{ report: CombinedCheck; handoff?: Handoff }> {
+  dependencies = checkDependencies,
+): Promise<PreparedCheck> {
   if (
     options.profile !== undefined &&
     [options.scope, options.constraints, options.handoff].some(
@@ -95,9 +119,13 @@ export async function combinedCheck(
       throw new InputError(`Invalid JSON in '${path}'`);
     }
   };
-  const role = async (path: string): Promise<ReadResult> => {
+  const role = async <T>(
+    path: string,
+    parse: (input: unknown) => T,
+  ): Promise<Parsed<T>> => {
     try {
-      return { input: await json(path) };
+      const input = await json(path);
+      return parsed(() => parse(input));
     } catch (error) {
       return { error: diagnostic(error) };
     }
@@ -116,108 +144,137 @@ export async function combinedCheck(
     ),
   );
   const projectId = checkProject(manifest, undefined, config.projectId);
-  const handoffInput = await role(
+  const handoff = await role(
     options.handoff === undefined
       ? resolve(loaded.directory, config.handoff ?? "handoff.json")
       : resolve(cwd, options.handoff),
-  );
-  const reviewInput =
-    options.registry === undefined
-      ? undefined
-      : await role(resolve(cwd, options.registry));
-  const sourceInput =
-    options.sources === undefined
-      ? undefined
-      : await role(resolve(cwd, options.sources));
-  const asOf = new Date(
-    timestamp(options["as-of"] ?? dependencies.clock(), "--as-of"),
-  ).toISOString();
-  let handoff: Handoff | undefined;
-  const selected = <T>(
-    input: ReadResult,
-    evaluate: (value: unknown) => T,
-    passed: (result: T) => boolean,
-  ): Exclude<Section<T>, { status: "not-requested" }> => {
-    if ("error" in input) return { status: "invalid", error: input.error };
-    try {
-      const result = evaluate(input.input);
-      return { status: passed(result) ? "passed" : "attention", result };
-    } catch (error) {
-      return { status: "invalid", error: diagnostic(error) };
-    }
-  };
-  const verification = selected(
-    handoffInput,
     (input) => {
-      const parsed = parseHandoff(input);
-      if (parsed.schemaVersion === 1)
+      const value = parseHandoff(input);
+      if (value.schemaVersion === 1)
         throw new InputError(
           "check requires a content-aware v2/v3/v4 handoff; review and capture a baseline explicitly",
         );
-      const result = verify(manifest, parsed, scope, asOf, {
-        requireActive: true,
-        ...(config.projectId === undefined
-          ? {}
-          : { projectId: config.projectId }),
-      });
-      handoff = parsed;
-      return result;
+      return value;
     },
-    (result) => result.status === "verified",
   );
   const review =
-    reviewInput === undefined
-      ? { status: "not-requested" as const }
-      : selected(
-          reviewInput,
-          (input) =>
-            reviewRules(manifest, parseReviewRegistry(input), scope, asOf),
-          (result) => result.status === "current",
-        );
-  let sources: CombinedCheck["checks"]["sources"] = { status: "not-requested" };
-  if (sourceInput !== undefined) {
-    if ("error" in sourceInput)
-      sources = { status: "invalid", error: sourceInput.error };
-    else
-      try {
-        const registry = parseSourceRegistry(sourceInput.input);
-        const targets = sourceCheckTargets(manifest, registry, scope, asOf);
-        const observations = await dependencies.sources(
-          loaded.directory,
-          targets,
-        );
-        const result = checkSources(
-          manifest,
-          registry,
-          scope,
-          asOf,
-          observations,
-        );
-        sources = {
-          status: result.status === "unchanged" ? "passed" : "attention",
-          result,
-        };
-      } catch (error) {
-        sources = { status: "invalid", error: diagnostic(error) };
-      }
+    options.registry === undefined
+      ? undefined
+      : await role(resolve(cwd, options.registry), parseReviewRegistry);
+  let sources =
+    options.sources === undefined
+      ? undefined
+      : await role(resolve(cwd, options.sources), parseSourceRegistry);
+  const selectionTime = new Date(
+    timestamp(options["as-of"] ?? dependencies.clock(), "--as-of"),
+  ).toISOString();
+  let observations: ReadonlyMap<string, SourceObservation> = new Map();
+  if (sources && "value" in sources) {
+    try {
+      const targets = sourceCheckTargets(
+        manifest,
+        sources.value,
+        scope,
+        selectionTime,
+      );
+      observations = await dependencies.sources(loaded.directory, targets);
+    } catch (error) {
+      sources = { error: diagnostic(error) };
+    }
   }
   return {
-    report: combineChecks(
-      {
-        scope,
-        asOf,
-        activeConstraintCount: explain(manifest, scope, asOf).rules.filter(
-          (r) => r.decision === "ACTIVE",
-        ).length,
-        ...(options.profile === undefined ? {} : { profile: options.profile }),
-        ...(projectId === undefined ? {} : { projectId }),
-      },
-      { verification, review, sources },
-    ),
-    ...(handoff === undefined ? {} : { handoff }),
+    manifest,
+    scope,
+    selectionTime,
+    handoff,
+    observations,
+    ...(review === undefined ? {} : { review }),
+    ...(sources === undefined ? {} : { sources }),
+    ...(projectId === undefined ? {} : { projectId }),
+    ...(options.profile === undefined ? {} : { profile: options.profile }),
   };
 }
-
+/** Synchronous, read-only evaluation of prepared objects and existing observations. */
+export function evaluatePrepared(
+  prepared: PreparedCheck,
+  asOf: string,
+): CombinedCheck {
+  const time = new Date(timestamp(asOf, "asOf")).toISOString();
+  const { manifest, scope } = prepared;
+  const selected = <T, R>(
+    input: Parsed<T>,
+    evaluate: (value: T) => R,
+    passed: (result: R) => boolean,
+  ): Exclude<Section<R>, { status: "not-requested" }> => {
+    if ("error" in input) return { status: "invalid", error: input.error };
+    const result = parsed(() => evaluate(input.value));
+    return "error" in result
+      ? { status: "invalid", error: result.error }
+      : {
+          status: passed(result.value) ? "passed" : "attention",
+          result: result.value,
+        };
+  };
+  const verification = selected(
+    prepared.handoff,
+    (handoff) =>
+      verify(manifest, handoff, scope, time, {
+        requireActive: true,
+        ...(prepared.projectId === undefined
+          ? {}
+          : { projectId: prepared.projectId }),
+      }),
+    (r) => r.status === "verified",
+  );
+  const review =
+    prepared.review === undefined
+      ? { status: "not-requested" as const }
+      : selected(
+          prepared.review,
+          (registry) => reviewRules(manifest, registry, scope, time),
+          (r) => r.status === "current",
+        );
+  const sources =
+    prepared.sources === undefined
+      ? { status: "not-requested" as const }
+      : selected(
+          prepared.sources,
+          (registry) =>
+            checkSources(
+              manifest,
+              registry,
+              scope,
+              time,
+              prepared.observations,
+            ),
+          (r) => r.status === "unchanged",
+        );
+  return combineChecks(
+    {
+      scope,
+      asOf: time,
+      activeConstraintCount: explain(manifest, scope, time).rules.filter(
+        (r) => r.decision === "ACTIVE",
+      ).length,
+      ...(prepared.profile === undefined ? {} : { profile: prepared.profile }),
+      ...(prepared.projectId === undefined
+        ? {}
+        : { projectId: prepared.projectId }),
+    },
+    { verification, review, sources },
+  );
+}
+export async function combinedCheck(
+  cwd: string,
+  options: CheckOptions,
+  dependencies = checkDependencies,
+): Promise<{ report: CombinedCheck; handoff?: Handoff }> {
+  const prepared = await prepareCheck(cwd, options, dependencies);
+  return {
+    report: evaluatePrepared(prepared, prepared.selectionTime),
+    ...("value" in prepared.handoff ? { handoff: prepared.handoff.value } : {}),
+  };
+}
 export async function checkCommand(
   cwd: string,
   options: CheckOptions,
