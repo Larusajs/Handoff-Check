@@ -57,4 +57,10 @@ read these files. See ADR 0010 for path, byte, race and OS/platform limits.
 Exit codes: 0 for verified IDs, 1 for rule mismatches, 2 for invalid input or an
 unreadable input file. JSON output is intended for agent adapters and automation.
 
+Combined check composes the existing pure engines with shared validated common
+inputs and one clock. Its CLI caches resolved metadata reads but validates every
+selected role independently. Optional failures remain report sections, while common
+input failures use normal CLI errors. No execution or input writes are added.
+See ADR 0011 for report and error boundaries.
+
 See decisions/0001-constraint-lifecycle.md for lifecycle and scope semantics.

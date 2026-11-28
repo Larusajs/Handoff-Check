@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.0
+
+- Add explicit combined check with mandatory content-aware, nonempty verification.
+- Compose optional review and source checks only when their paths are supplied.
+- Preserve independent results and invalid-over-attention status precedence.
+- Cache resolved metadata reads and share one evaluation clock across sections.
+- Add an independent report schema, safe rendering and honest pilot observation guidance.
+- Preserve existing command outputs, hashes, contracts and enforcement policies.
+
 ## 0.10.0
 
 - Add explicit local source binding plans, raw-byte source registries and source-check reports.
