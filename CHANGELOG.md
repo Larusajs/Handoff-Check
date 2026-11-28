@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0
+
+- Add opt-in review/source maintenance gates to run through explicit registry paths.
+- Split shared preparation from synchronous evaluation without duplicating engines.
+- Reevaluate at a final current clock after source I/O before maintained launch.
+- Fail closed on newly eligible sources with missing observations, without extra reads.
+- Preserve default run, standalone check, child argv/results and watchdog/signal limits.
+- Report bounded maintenance diagnostics on stderr and never start blocked children.
+
 ## 0.11.0
 
 - Add explicit combined check with mandatory content-aware, nonempty verification.

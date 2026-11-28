@@ -60,6 +60,9 @@ jobs:
           node -e 'const r=require("./combined-default.json");if(r.status!=="passed"||r.summary.notRequestedChecks!==2||r.checks.review.status!=="not-requested")process.exit(1)'
           npx --yes --offline --package="$PACKAGE" handoff-check check --handoff handoff.next.json --registry rules.review.json --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > combined-all.json
           node -e 'const r=require("./combined-all.json");if(r.status!=="passed"||r.summary.passedChecks!==3)process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check review-record --owner ci-team --review-by 9999-12-31T23:59:59Z --output run-review.json
+          npx --yes --offline --package="$PACKAGE" handoff-check run --handoff handoff.next.json --registry run-review.json --sources source-registry.json -- node -e 'process.stdout.write(JSON.stringify(process.argv.slice(1)))' -- '--registry' 'two words' '$literal' > maintained-argv.json 2> maintained-diagnostics.txt
+          node -e 'const fs=require("node:fs"),r=require("./maintained-argv.json");if(JSON.stringify(r)!==JSON.stringify(["--registry","two words","$literal"])||!fs.readFileSync("maintained-diagnostics.txt","utf8").includes("RUN MAINTENANCE PASSED"))process.exit(1)'
           node -e 'require("node:fs").writeFileSync("invalid-review.json","{}")'
           if npx --yes --offline --package="$PACKAGE" handoff-check check --handoff handoff.next.json --registry invalid-review.json --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > combined-invalid.json; then
             exit 1
@@ -69,6 +72,20 @@ jobs:
           fi
           node -e 'const r=require("./combined-invalid.json");if(r.status!=="invalid"||r.checks.verification.status!=="passed"||r.checks.sources.status!=="passed"||r.checks.review.status!=="invalid")process.exit(1)'
           node -e 'require("node:fs").writeFileSync("policy.txt","edited synthetic policy\n")'
+          if npx --yes --offline --package="$PACKAGE" handoff-check run --handoff handoff.next.json --registry run-review.json --sources source-registry.json -- node -e 'require("node:fs").writeFileSync("MAINTAINED-MUST-NOT-START","bad")' > maintained-blocked.out 2> maintained-blocked.err; then
+            exit 1
+          else
+            MAINTAINED_EXIT=$?
+            test "$MAINTAINED_EXIT" -eq 1
+          fi
+          node -e 'const fs=require("node:fs");if(fs.existsSync("MAINTAINED-MUST-NOT-START")||fs.readFileSync("maintained-blocked.out","utf8")!==""||!fs.readFileSync("maintained-blocked.err","utf8").includes("SOURCE_CHANGED"))process.exit(1)'
+          if npx --yes --offline --package="$PACKAGE" handoff-check run --handoff handoff.next.json --registry invalid-review.json --sources source-registry.json -- node -e 'require("node:fs").writeFileSync("MAINTAINED-MUST-NOT-START","bad")' > maintained-invalid.out 2> maintained-invalid.err; then
+            exit 1
+          else
+            MAINTAINED_EXIT=$?
+            test "$MAINTAINED_EXIT" -eq 2
+          fi
+          node -e 'const fs=require("node:fs");if(fs.existsSync("MAINTAINED-MUST-NOT-START")||fs.readFileSync("maintained-invalid.out","utf8")!=="")process.exit(1)'
           if npx --yes --offline --package="$PACKAGE" handoff-check check --handoff handoff.next.json --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > combined-attention.json; then
             exit 1
           else

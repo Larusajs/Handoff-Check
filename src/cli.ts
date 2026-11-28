@@ -37,6 +37,7 @@ Usage: handoff-check verify --scope <scope> [options]
        handoff-check review --registry <review-file> [--profile <name>] [--format text|json|markdown]
        handoff-check review-record --owner <owner> --review-by <UTC time> [--output <new-file>] [options]
        handoff-check run [--profile <name> | --scope <scope>] [--config <path>] -- <executable> [args...]
+         [--registry <review-file>] [--sources <source-registry>] before -- opts into maintenance
        handoff-check diff --before <snapshot> --after <snapshot> [--format text|json|markdown]
        handoff-check setup [--dry-run]
        handoff-check init --scope <scope> [--agent both] [--dry-run] [--ci]
@@ -47,9 +48,9 @@ Usage: handoff-check verify --scope <scope> [options]
        handoff-check hook --host claude --config <absolute-path> [--require-active]
 
 Options:
-  --sources <path>      source-check: explicit local-source registry (cwd relative)
+  --sources <path>      source-check/check/run: explicit local-source registry (cwd relative)
   --bindings <path>     source-record: explicit rule/path binding plan (cwd relative)
-  --registry <path>     review: explicit review registry (resolved from cwd)
+  --registry <path>     review/check/run: explicit review registry (resolved from cwd)
   --owner <owner>       review-record: owner of explicitly reviewed active rules
   --review-by <UTC>     review-record: review deadline, later than capture time
   --before <path>       diff: saved snapshot before the change
@@ -76,11 +77,12 @@ Options:
   --help               Show this help
 
 Exit codes: verify 0 verified / 1 mismatch; diff 0 unchanged / 1 different; doctor 0 healthy / 1 attention.
-Review: 0 current maintenance / 1 attention (including zero active); never changes verify/run policy.
+Review: 0 current maintenance / 1 attention (including zero active); never changes rule applicability/default run.
 Source-check: 0 unchanged / 1 attention (including zero active); no implicit source reads by verify/run.
 Check: mandatory content/nonempty verification; optional --registry/--sources, not requested otherwise.
 Combined check exits 0 passed / 1 attention / 2 invalid, preserving independent section results.
 Run: mandatory content/nonempty/current-clock preflight; 1 blocked / 2 invalid or launch error.
+Run --registry/--sources: explicit maintenance, final clock after source I/O, any selected failure blocks.
 After launch run returns the child exit code (or 128 + signal); diagnostics use stderr.
 Hook 0 means advisory response delivered (may report FAIL/INVALID), not verified.
 Invalid invocation/input returns 2; explain/init/snapshot/hook-config succeed with 0.
@@ -202,7 +204,10 @@ async function main(): Promise<number> {
           throw new InputError(`--${key} is not supported by ${command}`);
       return await sourceCommand(cwd, command, values);
     }
-    if (values.sources !== undefined || values.bindings !== undefined)
+    if (
+      (values.sources !== undefined && command !== "run") ||
+      values.bindings !== undefined
+    )
       throw new InputError(
         "--sources and --bindings are source-check/source-record-only",
       );
@@ -224,7 +229,7 @@ async function main(): Promise<number> {
       return await reviewCommand(cwd, command, values);
     }
     if (
-      values.registry !== undefined ||
+      (values.registry !== undefined && command !== "run") ||
       values.owner !== undefined ||
       values["review-by"] !== undefined
     )
@@ -236,7 +241,15 @@ async function main(): Promise<number> {
         throw new InputError(
           "Use run as the first argument and include -- <executable> [arguments...]",
         );
-      const allowed = ["config", "profile", "scope", "constraints", "handoff"];
+      const allowed = [
+        "config",
+        "profile",
+        "scope",
+        "constraints",
+        "handoff",
+        "registry",
+        "sources",
+      ];
       for (const key of Object.keys(values)) {
         if (
           key === "format" &&

@@ -1,7 +1,13 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { constants } from "node:os";
 import { resolve } from "node:path";
+import {
+  checkDependencies,
+  evaluatePrepared,
+  prepareCheck,
+} from "./check-cli.js";
 import { loadConfig, readJson, selectProfile } from "./config.js";
+import type { VerificationResult } from "./contracts.js";
 import { terminalText } from "./render.js";
 import {
   InputError,
@@ -17,6 +23,8 @@ export interface RunOptions {
   scope?: string;
   constraints?: string;
   handoff?: string;
+  registry?: string;
+  sources?: string;
 }
 
 /** A local preflight around an explicitly supplied executable, never a shell string. */
@@ -24,6 +32,7 @@ export async function runVerified(
   cwd: string,
   options: RunOptions,
   argv: string[],
+  dependencies = checkDependencies,
 ): Promise<number> {
   const executable = argv[0];
   if (!executable?.trim())
@@ -77,38 +86,85 @@ export async function runVerified(
     "RUN CHECKING: current-clock content/nonempty preflight\n",
   );
   try {
-    const loaded = await loadConfig(cwd, options.config, true);
-    const config = selectProfile(loaded.config, options.profile);
-    const scope = identifier(
-      options.scope ?? config.scope,
-      "--scope (or config.scope)",
-    );
-    const manifest = parseManifest(
-      await readJson(
-        options.constraints !== undefined
-          ? resolve(cwd, options.constraints)
-          : resolve(loaded.directory, config.constraints ?? "constraints.json"),
-        true,
-      ),
-    );
-    const handoff = parseHandoff(
-      await readJson(
-        options.handoff !== undefined
-          ? resolve(cwd, options.handoff)
-          : resolve(loaded.directory, config.handoff ?? "handoff.json"),
-        true,
-      ),
-    );
-    if (handoff.schemaVersion === 1)
-      throw new InputError(
-        "run requires a content-aware v2/v3/v4 handoff; review and capture a baseline explicitly",
+    let result: VerificationResult;
+    if (options.registry !== undefined || options.sources !== undefined) {
+      const prepared = await prepareCheck(
+        cwd,
+        { ...options, format: "text" },
+        dependencies,
       );
-    const result = verify(manifest, handoff, scope, new Date().toISOString(), {
-      requireActive: true,
-      ...(config.projectId === undefined
-        ? {}
-        : { projectId: config.projectId }),
-    });
+      // No asynchronous work between this final current-clock evaluation and spawn.
+      const report = evaluatePrepared(prepared, dependencies.clock());
+      for (const [name, section] of Object.entries(report.checks)) {
+        process.stderr.write(
+          `RUN MAINTENANCE ${name}: ${section.status.toUpperCase()}\n`,
+        );
+        if (section.status === "invalid")
+          process.stderr.write(
+            `RUN INVALID ${name}: ${terminalText(section.error).slice(0, 512)}\n`,
+          );
+        else if ("result" in section) {
+          for (const finding of section.result.findings.slice(0, 10))
+            process.stderr.write(
+              `RUN FINDING ${name} ${finding.code}${finding.id ? ` ${terminalText(finding.id).slice(0, 128)}` : ""}\n`,
+            );
+          if (section.result.findings.length > 10)
+            process.stderr.write(
+              `RUN FINDING ${name}: additional findings omitted\n`,
+            );
+        }
+      }
+      process.stderr.write(
+        `RUN MAINTENANCE ${report.status.toUpperCase()} | ${report.activeConstraintCount} active constraints | as of ${report.asOf}\n`,
+      );
+      if (report.status !== "passed") {
+        process.stderr.write("RUN BLOCKED: command not started\n");
+        return report.status === "invalid" ? 2 : 1;
+      }
+      const verification = report.checks.verification;
+      if (!("result" in verification))
+        throw new InputError(
+          "Maintained verification did not produce a result",
+        );
+      result = verification.result;
+    } else {
+      const loaded = await loadConfig(cwd, options.config, true);
+      const config = selectProfile(loaded.config, options.profile);
+      const scope = identifier(
+        options.scope ?? config.scope,
+        "--scope (or config.scope)",
+      );
+      const manifest = parseManifest(
+        await readJson(
+          options.constraints !== undefined
+            ? resolve(cwd, options.constraints)
+            : resolve(
+                loaded.directory,
+                config.constraints ?? "constraints.json",
+              ),
+          true,
+        ),
+      );
+      const handoff = parseHandoff(
+        await readJson(
+          options.handoff !== undefined
+            ? resolve(cwd, options.handoff)
+            : resolve(loaded.directory, config.handoff ?? "handoff.json"),
+          true,
+        ),
+      );
+      if (handoff.schemaVersion === 1)
+        throw new InputError(
+          "run requires a content-aware v2/v3/v4 handoff; review and capture a baseline explicitly",
+        );
+      result = verify(manifest, handoff, scope, new Date().toISOString(), {
+        requireActive: true,
+        ...(config.projectId === undefined
+          ? {}
+          : { projectId: config.projectId }),
+      });
+    }
+    const scope = result.scope;
     clearTimeout(deadline);
     if (result.status !== "verified") {
       for (const finding of result.findings)

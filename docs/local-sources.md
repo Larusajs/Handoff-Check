@@ -27,7 +27,7 @@ known inactive/out-of-scope bindings are ignored without reading their files.
 After reviewing the current rules and those files, run:
 
 ```sh
-npx handoff-check@0.11.0 source-record --profile production --bindings source-bindings.json --output sources.next.json
+npx handoff-check@0.12.0 source-record --profile production --bindings source-bindings.json --output sources.next.json
 ```
 
 Choose the intended configured profile. The plan path is relative to cwd; each
@@ -53,9 +53,9 @@ directory creation or refresh. Do not capture again merely to clear a finding.
 ## Check an explicit registry
 
 ```sh
-npx handoff-check@0.11.0 source-check --profile production --sources sources.next.json
-npx handoff-check@0.11.0 source-check --profile production --sources sources.next.json --format json
-npx handoff-check@0.11.0 source-check --profile production --sources sources.next.json --format markdown
+npx handoff-check@0.12.0 source-check --profile production --sources sources.next.json
+npx handoff-check@0.12.0 source-check --profile production --sources sources.next.json --format json
+npx handoff-check@0.12.0 source-check --profile production --sources sources.next.json --format markdown
 ```
 
 `--sources` is required and resolves from cwd. Each active rule first compares
@@ -148,7 +148,7 @@ A new source record does not clear a CHANGED handoff or stale review record.
 From a checkout, without creating any handoff:
 
 ```sh
-npx handoff-check@0.11.0 source-check --config examples/local-sources/config.json --profile stage --sources examples/local-sources/sources.json --as-of 2026-11-27T08:00:00Z --format json
+npx handoff-check@0.12.0 source-check --config examples/local-sources/config.json --profile stage --sources examples/local-sources/sources.json --as-of 2026-11-27T08:00:00Z --format json
 ```
 
 Expect unchanged/exit 0 for two active rules sharing policy.md. In a disposable
