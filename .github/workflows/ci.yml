@@ -56,7 +56,26 @@ jobs:
           npx --yes --offline --package="$PACKAGE" handoff-check source-record --bindings source-bindings.json --as-of 2020-01-01T00:00:00Z --output source-registry.json
           npx --yes --offline --package="$PACKAGE" handoff-check source-check --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > sources-unchanged.json
           node -e 'const r=require("./sources-unchanged.json");if(r.kind!=="source-check"||r.unchangedSourceCount!==1||r.rules[0].status!=="UNCHANGED")process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check check --handoff handoff.next.json --as-of 2020-01-01T00:00:00Z --format json > combined-default.json
+          node -e 'const r=require("./combined-default.json");if(r.status!=="passed"||r.summary.notRequestedChecks!==2||r.checks.review.status!=="not-requested")process.exit(1)'
+          npx --yes --offline --package="$PACKAGE" handoff-check check --handoff handoff.next.json --registry rules.review.json --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > combined-all.json
+          node -e 'const r=require("./combined-all.json");if(r.status!=="passed"||r.summary.passedChecks!==3)process.exit(1)'
+          node -e 'require("node:fs").writeFileSync("invalid-review.json","{}")'
+          if npx --yes --offline --package="$PACKAGE" handoff-check check --handoff handoff.next.json --registry invalid-review.json --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > combined-invalid.json; then
+            exit 1
+          else
+            COMBINED_EXIT=$?
+            test "$COMBINED_EXIT" -eq 2
+          fi
+          node -e 'const r=require("./combined-invalid.json");if(r.status!=="invalid"||r.checks.verification.status!=="passed"||r.checks.sources.status!=="passed"||r.checks.review.status!=="invalid")process.exit(1)'
           node -e 'require("node:fs").writeFileSync("policy.txt","edited synthetic policy\n")'
+          if npx --yes --offline --package="$PACKAGE" handoff-check check --handoff handoff.next.json --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > combined-attention.json; then
+            exit 1
+          else
+            COMBINED_EXIT=$?
+            test "$COMBINED_EXIT" -eq 1
+          fi
+          node -e 'const r=require("./combined-attention.json");if(r.status!=="attention"||r.checks.sources.result.rules[0].status!=="SOURCE_CHANGED")process.exit(1)'
           if npx --yes --offline --package="$PACKAGE" handoff-check source-check --sources source-registry.json --as-of 2020-01-01T00:00:00Z --format json > sources-changed.json; then
             echo "Expected explicit source byte changes"
             exit 1

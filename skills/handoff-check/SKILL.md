@@ -6,6 +6,13 @@ description: Verify declared constraint IDs against a local reviewed manifest be
 
 # Handoff Check
 
+For an explicitly requested daily combined report, call the existing CLI's
+`check` command. Content-aware and nonempty verification are mandatory. Include
+`--registry` or `--sources` only when the user has selected those records; omitted
+sections are not requested, never passed. Inspect every selected section: invalid
+exit 2 takes precedence over attention exit 1. Never refresh inputs to clear a
+finding or treat the report as permission. Existing `run` policy is unchanged.
+
 Use the existing `handoff-check` CLI; do not implement a second verifier or infer
 constraint IDs from a free-text task summary.
 

@@ -1,6 +1,14 @@
 # Development plan
 
-Status: milestones through 0.10 are implemented; later milestones remain proposed.
+0.11 implements the [combined daily check](combined-check.md), recorded in
+[ADR 0011](decisions/0011-combined-project-check.md), and a reusable
+[pilot guide and observation template](pilot-guide.md).
+Automated acceptance and a read-only technical smoke pilot do not
+establish human usability, time savings or completion across five repositories.
+Recruitment, consented feedback and measured observations remain future work.
+
+Status: implementation milestones through 0.11 are implemented; human pilot evidence
+and later milestones remain proposed.
 Research reviewed: 2026-11-24. Version labels below are targets, not release promises.
 
 ## Product direction

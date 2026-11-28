@@ -3,6 +3,7 @@ import { type FileHandle, open } from "node:fs/promises";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import metadata from "../package.json" with { type: "json" };
+import { checkCommand } from "./check-cli.js";
 import { loadConfig, readJsonRecord, selectProfile } from "./config.js";
 import { diffSnapshots, diffText } from "./diff.js";
 import { doctor } from "./doctor.js";
@@ -30,6 +31,7 @@ import { checkProject, explain, snapshot, verify } from "./verifier.js";
 const help = `Handoff Check
 
 Usage: handoff-check verify --scope <scope> [options]
+       handoff-check check [--profile <name>] [--registry <review-file>] [--sources <source-registry>] [options]
        handoff-check source-check --sources <source-registry> [options]
        handoff-check source-record --bindings <binding-plan> [--output <new-file>] [options]
        handoff-check review --registry <review-file> [--profile <name>] [--format text|json|markdown]
@@ -76,6 +78,8 @@ Options:
 Exit codes: verify 0 verified / 1 mismatch; diff 0 unchanged / 1 different; doctor 0 healthy / 1 attention.
 Review: 0 current maintenance / 1 attention (including zero active); never changes verify/run policy.
 Source-check: 0 unchanged / 1 attention (including zero active); no implicit source reads by verify/run.
+Check: mandatory content/nonempty verification; optional --registry/--sources, not requested otherwise.
+Combined check exits 0 passed / 1 attention / 2 invalid, preserving independent section results.
 Run: mandatory content/nonempty/current-clock preflight; 1 blocked / 2 invalid or launch error.
 After launch run returns the child exit code (or 128 + signal); diagnostics use stderr.
 Hook 0 means advisory response delivered (may report FAIL/INVALID), not verified.
@@ -139,6 +143,7 @@ async function main(): Promise<number> {
       positionals.length !== 1 ||
       ![
         "verify",
+        "check",
         "init",
         "snapshot",
         "explain",
@@ -155,10 +160,33 @@ async function main(): Promise<number> {
       ].includes(positionals[0] ?? "")
     )
       throw new InputError(
-        "Expected command: verify, snapshot, explain, init, setup, diff, run, review, review-record, source-check, source-record, doctor, hook or hook-config (use --help for usage)",
+        "Expected command: verify, check, snapshot, explain, init, setup, diff, run, review, review-record, source-check, source-record, doctor, hook or hook-config (use --help for usage)",
       );
     const cwd = process.cwd();
     const command = positionals[0];
+    if (command === "check") {
+      if (rawArgs.includes("--"))
+        throw new InputError(
+          "check does not accept a command separator or child arguments",
+        );
+      const allowed = [
+        "config",
+        "profile",
+        "scope",
+        "constraints",
+        "handoff",
+        "as-of",
+        "format",
+        "registry",
+        "sources",
+      ];
+      for (const key of Object.keys(values))
+        if (!allowed.includes(key))
+          throw new InputError(
+            `--${key} is not supported by check; content and nonempty checks are mandatory`,
+          );
+      return await checkCommand(cwd, values);
+    }
     if (command === "source-check" || command === "source-record") {
       const allowed = [
         "config",

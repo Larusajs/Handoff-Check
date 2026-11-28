@@ -9,8 +9,8 @@ infers rules from a summary.
 From the consuming repository root:
 
 ```sh
-npx handoff-check@0.10.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.10.0 init --scope staging --agent both
+npx handoff-check@0.11.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.11.0 init --scope staging --agent both
 ```
 
 Choose `codex`, `claude`, `both` (default), or `none`. Generated integrations:
