@@ -39,7 +39,7 @@ export function digest(bytes: Uint8Array): string {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
 
-async function readBytes(path: string, regularOnly: boolean) {
+export async function readBytes(path: string, regularOnly: boolean) {
   if (!regularOnly) return readFile(path);
   // Opening a FIFO in blocking mode can stall shutdown as well as the read.
   const handle = await open(
@@ -150,6 +150,8 @@ export async function loadConfig(
   cwd: string,
   explicit?: string,
   regularOnly = false,
+  reader: (path: string) => Promise<Buffer> = (path) =>
+    readBytes(path, regularOnly),
 ): Promise<{
   config: ProjectConfig;
   directory: string;
@@ -158,7 +160,7 @@ export async function loadConfig(
   const path = resolve(cwd, explicit ?? ".handoff-check.json");
   let input: Buffer;
   try {
-    input = await readBytes(path, regularOnly);
+    input = await reader(path);
   } catch (error) {
     if (
       explicit === undefined &&
