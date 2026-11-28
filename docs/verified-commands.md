@@ -1,5 +1,41 @@
 # Verify immediately before a command
 
+## Explicit maintenance before launch
+
+0.12 adds optional review and source gates to the same command:
+
+```sh
+npx handoff-check@0.12.0 run --profile production --registry rules.review.json --sources sources.json -- node scripts/preflight-demo.js
+```
+
+Both options are explicit and independent; select either or both. Omitted records
+are not read or discovered. With neither option, run retains its existing behavior
+and diagnostics. Maintenance attention blocks with exit 1; invalid selected input
+blocks with exit 2, which takes precedence. No child starts on either outcome.
+
+Preparation caches metadata reads and parses each selected role once, then observes
+eligible current-reference source files once using existing bounds and safeguards.
+After all asynchronous preparation, a fresh current clock reevaluates verification,
+review and sources synchronously immediately before launch. Expiry, an empty active
+set or a review deadline crossed during source reads therefore blocks the child.
+A clock rollback that makes an unobserved source eligible fails closed as invalid;
+there is no second read, implicit refresh or assumed unchanged result.
+
+The existing five-second preflight watchdog and cancellation cover this work and
+are cleared before a successful child runs. New diagnostics show section states,
+bounded finding codes/IDs, final evaluation time and active count on stderr, never
+source contents, full argv or combined JSON on stdout. Common invocation/config
+failures remain ordinary invalid diagnostics. Explicit registries resolve from cwd;
+source files retain their config-directory root and existing path/size/identity
+limits. A fixed --as-of, format/report/output, force or policy override is rejected
+before the separator; identically named child arguments after it remain literal.
+
+Metadata and file observations remain non-atomic. Final evaluation does not reread
+bytes or lock files, authenticate records or authorize behavior. Maintenance can
+change after checking; a program can perform further actions. The supplied child,
+signal forwarding and descendant limitations below remain unchanged. Standalone
+check still uses its original single evaluation clock, even after slow source I/O.
+
 `run` performs a current-clock verification and starts an explicitly supplied
 executable only after a nonempty, content-aware handoff passes. It calls the same
 verifier as `verify`; the pure core and existing input formats are unchanged.
@@ -7,7 +43,7 @@ verifier as `verify`; the pure core and existing input formats are unchanged.
 With Node.js 22 or newer, use an existing reviewed project configuration:
 
 ```sh
-npx handoff-check@0.11.0 run --profile production -- node scripts/preflight-demo.js
+npx handoff-check@0.12.0 run --profile production -- node scripts/preflight-demo.js
 ```
 
 The profile is an example: select the intended configured profile, or use
@@ -31,7 +67,7 @@ including `--help`, `--version`, `--profile`, spaces, empty strings and shell
 metacharacters. The wrapper uses `spawn` with `shell: false`; it never constructs
 a command string or reads an executable from project rules/config.
 
-Only `--config`, `--profile`, `--scope`, `--constraints`, and `--handoff` are
+Only `--config`, `--profile`, `--scope`, `--constraints`, `--handoff`, `--registry`, and `--sources` are
 supported wrapper options. `run --help` prints usage without starting a child.
 `--as-of`, policy overrides, output/report formats and force/skip modes are not
 supported. Content-aware v2/v3/v4 and at least one active constraint are mandatory.
@@ -89,7 +125,7 @@ failure diagnostics after launch do not reclassify it as a launch failure.
 In a disposable configured project with a reviewed active baseline:
 
 ```sh
-npx handoff-check@0.11.0 run --profile production -- node -e 'console.log("example command started")'
+npx handoff-check@0.12.0 run --profile production -- node -e 'console.log("example command started")'
 ```
 
 Edit a rule description in that disposable manifest without refreshing its saved

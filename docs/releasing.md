@@ -22,7 +22,7 @@ use the configured trusted publisher and the reviewed-artifact process below.
    `npm publish /absolute/path/handoff-check-0.10.0.tgz --ignore-scripts --access public`.
    Complete interactive two-factor authentication directly with npm.
 5. Verify registry name, version, binary and integrity, then test
-   `npx --yes handoff-check@0.11.0 --version` and fresh-project init/verify using a
+   `npx --yes handoff-check@0.12.0 --version` and fresh-project init/verify using a
    new package cache and the public registry, rather than the local tarball.
 6. Create tag `v0.10.0` and a GitHub release on the reviewed main commit, attach the
    same tarball, and describe features, requirements and known limits.

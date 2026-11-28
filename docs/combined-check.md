@@ -3,8 +3,8 @@
 With an existing reviewed configuration and Node.js 22+, run:
 
 ```sh
-npx handoff-check@0.11.0 check --profile production
-npx handoff-check@0.11.0 check --profile production --registry rules.review.json --sources sources.json --format json
+npx handoff-check@0.12.0 check --profile production
+npx handoff-check@0.12.0 check --profile production --registry rules.review.json --sources sources.json --format json
 ```
 
 Choose an explicitly configured profile, or use --scope with optional
@@ -69,6 +69,6 @@ and retained rule content in nested findings may be sensitive; review reports
 before sharing. Shell redirection can truncate files independently of this CLI:
 never redirect reports onto inputs.
 
-Old verify/run/review/source-check outputs and policies remain unchanged. Run
-continues to gate only its existing mandatory verification; this command does not
-install hooks or automatically enforce maintenance in another workflow.
+Default verify/run/review/source-check outputs and policies remain unchanged.
+Run can explicitly select maintenance with --registry/--sources in 0.12, but this
+command does not install hooks or enable maintenance in another workflow.

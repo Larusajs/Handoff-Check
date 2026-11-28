@@ -6,12 +6,19 @@ description: Verify declared constraint IDs against a local reviewed manifest be
 
 # Handoff Check
 
+When explicitly asked to gate a command on maintenance, use existing `run` with
+the selected `--registry` and/or `--sources` before its `--` executable boundary.
+Attention or invalid selected records block launch; do not refresh them to clear
+findings. Maintained run reevaluates at a final current clock after source I/O,
+but reads remain non-atomic and do not grant permission. With neither option,
+run retains its existing verification-only policy. Do not infer registry paths.
+
 For an explicitly requested daily combined report, call the existing CLI's
 `check` command. Content-aware and nonempty verification are mandatory. Include
 `--registry` or `--sources` only when the user has selected those records; omitted
 sections are not requested, never passed. Inspect every selected section: invalid
 exit 2 takes precedence over attention exit 1. Never refresh inputs to clear a
-finding or treat the report as permission. Existing `run` policy is unchanged.
+finding or treat the report as permission. Default `run` policy is unchanged.
 
 Use the existing `handoff-check` CLI; do not implement a second verifier or infer
 constraint IDs from a free-text task summary.
@@ -179,7 +186,7 @@ When source inspection is requested, use `source-check --sources <explicit-file>
 --profile <intended-profile> --format json`. Exit 0 means unchanged active sources,
 1 attention, 2 invalid metadata/invocation. File edits mean review is needed, not
 that policy meaning changed. Missing/stale/inactive/orphan bindings do not cause
-guessed source reads. This does not replace verify or change run/review/hook policy.
+guessed source reads. This does not replace verify or change default run/review/hook policy.
 
 Only after reviewing the intended files/rules, use `source-record --bindings
 <explicit-plan> --output <new-file>` with the selected scope/profile. Plans map

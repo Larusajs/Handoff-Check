@@ -63,4 +63,10 @@ selected role independently. Optional failures remain report sections, while com
 input failures use normal CLI errors. No execution or input writes are added.
 See ADR 0011 for report and error boundaries.
 
+Maintained run explicitly selects optional registry/source gates. Shared preparation
+reads/parses metadata and observes eligible source paths once. Synchronous evaluation
+reuses existing engines without I/O at the final pre-launch clock; standalone check
+uses its original selection clock. Missing newly eligible observations fail closed.
+No-flags run retains its prior path and diagnostics. See ADR 0012 for timing limits.
+
 See decisions/0001-constraint-lifecycle.md for lifecycle and scope semantics.

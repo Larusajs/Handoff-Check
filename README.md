@@ -3,9 +3,15 @@
 A deterministic, local CLI that verifies active constraints before a coding agent
 resumes work.
 
-**Version: 0.11.0.**
+**Version: 0.12.0.**
 
-For a daily combined report, run `npx handoff-check@0.11.0 check --profile production`
+To gate one explicit command on selected maintenance too, use
+`npx handoff-check@0.12.0 run --profile production --registry rules.review.json --sources sources.json -- node scripts/preflight.js`.
+Selected attention or invalid records prevent launch; omitted maintenance stays
+unrequested. A final current-clock evaluation follows source I/O. See
+[verified commands](docs/verified-commands.md) for timing and process limits.
+
+For a daily combined report, run `npx handoff-check@0.12.0 check --profile production`
 with an explicitly configured profile. Content-aware, nonempty verification is
 mandatory. Add `--registry rules.review.json` and `--sources sources.json` to
 request independent maintenance checks; omitted checks are marked not requested.
@@ -24,8 +30,8 @@ Source references are review metadata and are never fetched.
 Run in the repository where your agent works:
 
 ```sh
-npx handoff-check@0.11.0 init --scope staging --agent both --dry-run
-npx handoff-check@0.11.0 init --scope staging --agent both
+npx handoff-check@0.12.0 init --scope staging --agent both --dry-run
+npx handoff-check@0.12.0 init --scope staging --agent both
 ```
 
 This creates `.handoff-check.json`, starter `constraints.json` and `handoff.json`,
@@ -39,7 +45,7 @@ on verification. Revisions and hashes detect edits under an unchanged rule ID.
 Ask a resuming agent to use the installed skill, or run:
 
 ```sh
-npx handoff-check@0.11.0 verify --format json --require-content
+npx handoff-check@0.12.0 verify --format json --require-content
 ```
 
 The saved config supplies paths and scope. `init --ci` also creates a pinned GitHub
@@ -48,7 +54,7 @@ agent execution; CI enforces the declared-ID comparison when its workflow runs.
 Neither checks whether the agent obeys a rule's meaning.
 
 Node.js 22+ is required; end users do not need Bun. Global installation is also
-available: `npm install --global handoff-check@0.11.0`. For contributor builds or
+available: `npm install --global handoff-check@0.12.0`. For contributor builds or
 offline package testing, see the [setup guide](docs/agent-integration.md).
 
 For a complete first-rule walkthrough, including a passing baseline and a detected
@@ -71,7 +77,7 @@ default but are explicitly marked. Unexpected reported IDs still fail.
 To require actual active rules, opt in:
 
 ```sh
-npx handoff-check@0.11.0 verify --require-content --require-active --format json
+npx handoff-check@0.12.0 verify --require-content --require-active --format json
 ```
 
 A zero active set produces global NO_ACTIVE_CONSTRAINTS (no fake ID), mismatch
@@ -89,8 +95,8 @@ init and snapshot reject it. See the
 After reviewing rules at handoff creation, capture a new baseline:
 
 ```sh
-npx handoff-check@0.11.0 snapshot --task "Resume migration review" --output handoff.next.json
-npx handoff-check@0.11.0 verify --handoff handoff.next.json --require-content --format json
+npx handoff-check@0.12.0 snapshot --task "Resume migration review" --output handoff.next.json
+npx handoff-check@0.12.0 verify --handoff handoff.next.json --require-content --format json
 ```
 
 Snapshot creates a new file exclusively. Review it before deliberately replacing
@@ -112,9 +118,9 @@ hashed, but referenced documents are not fetched or checked.
 ## Explain rules and review field changes
 
 ```sh
-npx handoff-check@0.11.0 explain --format markdown
-npx handoff-check@0.11.0 snapshot --task "Review migration" --include-content --output handoff.reviewed.json
-npx handoff-check@0.11.0 verify --handoff handoff.reviewed.json --require-content --format markdown
+npx handoff-check@0.12.0 explain --format markdown
+npx handoff-check@0.12.0 snapshot --task "Review migration" --include-content --output handoff.reviewed.json
+npx handoff-check@0.12.0 verify --handoff handoff.reviewed.json --require-content --format markdown
 ```
 
 `explain` shows every manifest rule's applicability for the selected scope/time,
@@ -170,8 +176,8 @@ Declare rule IDs and local paths in a binding plan, then record files only after
 reviewing them:
 
 ```sh
-npx handoff-check@0.11.0 source-record --profile production --bindings source-bindings.json --output sources.next.json
-npx handoff-check@0.11.0 source-check --profile production --sources sources.next.json
+npx handoff-check@0.12.0 source-record --profile production --bindings source-bindings.json --output sources.next.json
+npx handoff-check@0.12.0 source-check --profile production --sources sources.next.json
 ```
 
 Source-check compares whole-file raw bytes and flags changed, missing, unreadable,
@@ -186,8 +192,8 @@ After deliberately reviewing the applicable rules, record their ownership in a
 separate registry and check it independently:
 
 ```sh
-npx handoff-check@0.11.0 review-record --profile stage --owner platform-team --review-by 2027-01-01T00:00:00Z --output rules.review.next.json
-npx handoff-check@0.11.0 review --profile stage --registry rules.review.next.json
+npx handoff-check@0.12.0 review-record --profile stage --owner platform-team --review-by 2027-01-01T00:00:00Z --output rules.review.next.json
+npx handoff-check@0.12.0 review --profile stage --registry rules.review.next.json
 ```
 
 Choose the intended profile, owner and deadline; one owner/deadline applies to all
@@ -195,12 +201,13 @@ selected/global active rules in that record. Review reports missing, stale,
 future, overdue and orphan metadata with explicit counts. Stale revision/hash
 references cannot approve edited rules. A record captures a subset and never
 merges or overwrites an aggregate registry automatically. Review deadlines do not
-expire constraints or change verify/run/hooks. See [rule reviews](docs/rule-reviews.md).
+expire constraints or change default verify/run/hooks. Explicit maintained run
+can select review attention as a launch gate. See [rule reviews](docs/rule-reviews.md).
 
 ## Verify before running a command
 
 ```sh
-npx handoff-check@0.11.0 run --profile production -- node scripts/preflight-demo.js
+npx handoff-check@0.12.0 run --profile production -- node scripts/preflight-demo.js
 ```
 
 Use the intended configured profile and an explicitly chosen program. `run`
@@ -214,7 +221,7 @@ after the check. See [verified commands](docs/verified-commands.md).
 
 ## Snapshot diff and guided setup
 
-Run `npx handoff-check@0.11.0 setup` in a terminal to create a new project-bound
+Run `npx handoff-check@0.12.0 setup` in a terminal to create a new project-bound
 configuration with explicit environments and one real rule you author. Review
 the exact retained baselines before typing `yes`; existing files are never replaced.
 No agent integrations or dependencies are installed. Use `--dry-run` to preview.
@@ -231,8 +238,8 @@ See [the guide](docs/snapshot-diff-and-setup.md).
 reproducibility metadata. Existing unbound files/default JSON stay compatible.
 
 ```sh
-npx handoff-check@0.11.0 verify --profile stage --require-content --report --format json
-npx handoff-check@0.11.0 doctor --profile stage
+npx handoff-check@0.12.0 verify --profile stage --require-content --report --format json
+npx handoff-check@0.12.0 doctor --profile stage
 ```
 
 These commands require an explicitly authored config v2 profile. Bound manifest
@@ -242,12 +249,12 @@ record the exact input/config bytes parsed, package version and policies; Git is
 read only with separate --git-context. They are not signed attestations or proof
 of compliance. See [setup, migration and examples](docs/project-context.md).
 
-For read-only installation diagnostics, run `npx handoff-check@0.11.0 doctor`.
+For read-only installation diagnostics, run `npx handoff-check@0.12.0 doctor`.
 `doctor --format json` reports paths, supported input versions and managed
 integration pins. Its exit codes are 0 healthy, 1 attention and 2 invalid invocation;
 it does not verify a handoff or prove a host ran the integration.
 
-`npx handoff-check@0.11.0 hook-config --host claude` emits an opt-in advisory
+`npx handoff-check@0.12.0 hook-config --host claude` emits an opt-in advisory
 SessionStart snippet to merge manually into existing settings. It never overwrites
 settings, and requires a pinned project-local package. The local adapter uses the
 same verifier without network/model calls; startup/resume/clear/compact checks

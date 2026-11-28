@@ -7,7 +7,11 @@ Automated acceptance and a read-only technical smoke pilot do not
 establish human usability, time savings or completion across five repositories.
 Recruitment, consented feedback and measured observations remain future work.
 
-Status: implementation milestones through 0.11 are implemented; human pilot evidence
+0.12 implements [maintained command preflight](verified-commands.md), recorded in
+[ADR 0012](decisions/0012-maintained-command-preflight.md). Explicit maintenance
+selection and a final clock do not establish behavioral compliance or authorization.
+
+Status: implementation milestones through 0.12 are implemented; human pilot evidence
 and later milestones remain proposed.
 Research reviewed: 2026-11-24. Version labels below are targets, not release promises.
 
